@@ -778,3 +778,14 @@ select:disabled {
 :root[data-theme="light"] {
   color-scheme: light;
 }
+
+.voice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.voice-row .hint { margin: 0; }
+.voice-row .is-locked { color: var(--success, #2e9d5b); }

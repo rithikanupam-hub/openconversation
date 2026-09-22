@@ -33,7 +33,7 @@ LANGUAGES = [
 ENGINES = {
     "chatterbox_turbo": {
         "label": "Chatterbox Turbo (clone, English out, fastest)",
-        "repo": os.environ.get("LINGOSYNC_CHATTERBOX_MODEL", "mlx-community/chatterbox-turbo-fp16"),
+        "repo": os.environ.get("LINGOSYNC_CHATTERBOX_MODEL", "mlx-community/chatterbox-turbo-4bit"),
         "clones": True,
         "targets": ["en"],
     },
@@ -78,16 +78,29 @@ def _resample(audio: np.ndarray, src: int, dst: int) -> np.ndarray:
 
 @dataclass
 class VoiceProfile:
-    """Rolling reference audio for zero-shot cloning of the current speaker.
+    """Reference audio for zero-shot cloning of the current speaker.
 
-    Chatterbox needs > 5 s of reference. We stack the current utterance first
-    (so the most recent speaker dominates the encoder window) followed by the
-    previous ones until we have enough.
+    While collecting, clips are stacked newest first and looped to satisfy
+    Chatterbox's > 5 s assertion. Once `lock_seconds` of real speech is
+    gathered the voice is locked: the TTS conditionals are computed once and
+    reused for every later utterance until `clear()` (the "Reset voice" button).
     """
     clips: list = field(default_factory=list)  # newest first, 16 kHz float32
     max_seconds: float = 12.0
+    lock_seconds: float = 6.0
+    conds: object = None  # engine-specific cached conditioning once locked
+
+    @property
+    def seconds(self) -> float:
+        return sum(len(c) for c in self.clips) / SR16
+
+    @property
+    def locked(self) -> bool:
+        return self.conds is not None
 
     def add(self, clip: np.ndarray) -> None:
+        if self.locked:
+            return
         self.clips.insert(0, clip)
         total = 0.0
         kept = []
@@ -97,6 +110,9 @@ class VoiceProfile:
             if total >= self.max_seconds:
                 break
         self.clips = kept
+
+    def ready_to_lock(self) -> bool:
+        return not self.locked and self.seconds >= self.lock_seconds
 
     def reference(self, min_seconds: float = 5.5) -> np.ndarray | None:
         if not self.clips:
@@ -108,8 +124,14 @@ class VoiceProfile:
             ref = np.tile(ref, reps)
         return ref
 
+    def state(self) -> dict:
+        return {"type": "voice", "state": "locked" if self.locked else "collecting",
+                "seconds": round(self.seconds, 1),
+                "needed": self.lock_seconds}
+
     def clear(self) -> None:
         self.clips = []
+        self.conds = None
 
 
 @dataclass
@@ -201,17 +223,35 @@ class Pipeline:
         self._tts_id = engine
         return self._tts_model
 
-    def synthesize(self, text: str, lang: str, engine: str, ref16: np.ndarray | None,
-                   ref_text: str | None) -> tuple[np.ndarray, int]:
+    def _chatterbox_conds(self, model, profile: VoiceProfile | None, sr: int) -> dict:
+        """Returns generate() kwargs for Chatterbox, using/locking the profile's cached conditionals."""
+        if profile is None or not profile.clips:
+            return {}  # model's built-in default voice
+        if profile.locked:
+            model._conds = profile.conds
+            return {}
+        ref = _resample(profile.reference(), SR16, sr)
+        if profile.ready_to_lock():
+            t = time.time()
+            model.prepare_conditionals(ref, sample_rate=sr)
+            profile.conds = model._conds
+            log.info("Voice locked from %.1fs of speech (%.0f ms)", profile.seconds, (time.time() - t) * 1000)
+            return {}
+        return {"ref_audio": ref, "sample_rate": sr}
+
+    def synthesize(self, text: str, lang: str, engine: str, profile: VoiceProfile | None,
+                   ref_text: str | None, on_chunk=None) -> tuple[np.ndarray, int]:
+        """Synthesises `text`. If `on_chunk(audio, sr)` is given, audio is streamed to it as it is made."""
         model = self._load_tts(engine)
         sr = int(getattr(model, "sample_rate", 24_000))
         kwargs: dict = {}
         if engine == "chatterbox_turbo":
-            if ref16 is not None:
-                kwargs["ref_audio"] = _resample(ref16, SR16, sr)
-                kwargs["sample_rate"] = sr
-            kwargs.update(stream=False, max_tokens=800)
+            kwargs.update(self._chatterbox_conds(model, profile, sr))
+            kwargs.update(max_tokens=800)
+            if on_chunk:
+                kwargs.update(stream=True, streaming_interval=1.0)
         elif engine == "qwen3_tts":
+            ref16 = profile.reference() if profile is not None else None
             if ref16 is not None:
                 kwargs["ref_audio"] = _resample(ref16, SR16, sr)
                 kwargs["ref_text"] = ref_text
@@ -221,8 +261,12 @@ class Pipeline:
         chunks = []
         for seg in model.generate(text, **kwargs):
             a = np.asarray(seg.audio, dtype=np.float32).reshape(-1)
-            chunks.append(a)
             sr = int(getattr(seg, "sample_rate", sr) or sr)
+            if on_chunk:
+                # chunks are played as they arrive, so clip rather than normalise the whole take
+                a = np.clip(a, -0.98, 0.98)
+                on_chunk(a, sr)
+            chunks.append(a)
         if not chunks:
             raise RuntimeError("TTS produced no audio")
         audio = np.concatenate(chunks)
@@ -242,7 +286,12 @@ class Pipeline:
             log.info("TTS %s ready in %.1fs", engine, time.time() - t)
 
     def run(self, audio16: np.ndarray, source_lang: str, target_lang: str, engine: str,
-            clone: bool, profile: VoiceProfile, on_transcript=None) -> Result:
+            clone: bool, profile: VoiceProfile, on_transcript=None, on_translation=None,
+            on_chunk=None) -> Result:
+        """Runs one utterance. Callbacks fire as each stage finishes so the UI can update early.
+
+        With `on_chunk(audio, sr)` set, TTS audio is streamed and Result.audio_wav is None.
+        """
         timings: dict = {}
         with self.lock:
             t0 = time.time()
@@ -255,7 +304,8 @@ class Pipeline:
             if on_transcript:
                 on_transcript(text, detected)
 
-            if clone and ENGINES[engine]["clones"]:
+            cloning = clone and ENGINES[engine]["clones"]
+            if cloning:
                 profile.add(audio16)
 
             if detected == target_lang:
@@ -265,12 +315,23 @@ class Pipeline:
             t0 = time.time()
             target = self.translate(text, detected, target_lang, audio16)
             timings["mt_ms"] = int((time.time() - t0) * 1000)
+            if on_translation:
+                on_translation(target, dict(timings))
 
             t0 = time.time()
-            ref = profile.reference() if (clone and ENGINES[engine]["clones"]) else None
-            audio, sr = self.synthesize(target, target_lang, engine, ref, text if ref is not None else None)
+            first = {}
+
+            def chunk(a, sr):
+                first.setdefault("ms", int((time.time() - t0) * 1000))
+                on_chunk(a, sr)
+
+            audio, sr = self.synthesize(target, target_lang, engine, profile if cloning else None,
+                                        text if cloning else None, chunk if on_chunk else None)
             timings["tts_ms"] = int((time.time() - t0) * 1000)
-            return Result(text, detected, target, target_lang, wav_bytes(audio, sr), sr, timings)
+            if "ms" in first:
+                timings["tts_first_ms"] = first["ms"]
+            wav = None if on_chunk else wav_bytes(audio, sr)
+            return Result(text, detected, target, target_lang, wav, sr, timings)
 
 
 pipeline = Pipeline()

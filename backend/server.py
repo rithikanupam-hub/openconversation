@@ -14,7 +14,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .pipeline import ENGINES, LANGUAGES, VoiceProfile, pipeline
+from .pipeline import ENGINES, LANGUAGES, VoiceProfile, pipeline, wav_bytes
 from .vad import SAMPLE_RATE, Segmenter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -119,10 +119,23 @@ class Session:
                 self.send_threadsafe({"type": "status", "state": "translating",
                                       "detail": f"{lang} → {cfg['target_lang']}"})
 
+            def on_translation(target, timings):
+                self.send_threadsafe({"type": "segment", "id": uid, "source_text": None, "source_lang": None,
+                                      "target_text": target, "target_lang": cfg["target_lang"], "timings": timings})
+                self.send_threadsafe({"type": "status", "state": "synthesizing", "detail": ""})
+
+            part = [0]
+
+            def on_chunk(audio, sr):
+                self.send_threadsafe({"type": "audio", "id": uid, "part": part[0], "final": False,
+                                      "sample_rate": sr,
+                                      "wav_base64": base64.b64encode(wav_bytes(audio, sr)).decode()})
+                part[0] += 1
+
             try:
                 res = await self.loop.run_in_executor(
                     executor, pipeline.run, audio, cfg["source_lang"], cfg["target_lang"], cfg["engine"],
-                    bool(cfg["clone"] and cfg["consent"]), self.profile, on_transcript)
+                    bool(cfg["clone"] and cfg["consent"]), self.profile, on_transcript, on_translation, on_chunk)
             except Exception as e:  # noqa: BLE001
                 log.exception("pipeline failed")
                 await self.send({"type": "error", "message": f"Pipeline error: {e}"})
@@ -136,9 +149,10 @@ class Session:
                              "source_lang": res.source_lang, "target_text": res.target_text,
                              "target_lang": res.target_lang, "timings": res.timings,
                              "skipped": res.skipped})
-            if res.audio_wav:
-                await self.send({"type": "audio", "id": uid, "sample_rate": res.sample_rate,
-                                 "wav_base64": base64.b64encode(res.audio_wav).decode()})
+            if part[0]:
+                await self.send({"type": "audio", "id": uid, "part": part[0], "final": True})
+            if cfg["clone"] and cfg["consent"]:
+                await self.send(self.profile.state())
             await self.status("listening", "")
 
     async def on_audio(self, data: bytes):
@@ -183,6 +197,7 @@ async def ws_endpoint(ws: WebSocket):
                 if t == "config":
                     s.apply_config(m)
                     await s.send({"type": "config", **s.cfg})
+                    await s.send(s.profile.state())
                 elif t == "flush":
                     utt = s.seg.flush()
                     if utt is not None:
@@ -192,6 +207,9 @@ async def ws_endpoint(ws: WebSocket):
                     if utt is not None:
                         await s.enqueue(utt.audio)
                     await s.status("idle", "stopped")
+                elif t == "reset_voice":
+                    s.profile.clear()
+                    await s.send(s.profile.state())
                 elif t == "ping":
                     await s.send({"type": "pong"})
     except WebSocketDisconnect:

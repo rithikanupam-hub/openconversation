@@ -23,9 +23,9 @@ class Utterance:
 class Segmenter:
     # tuning (seconds)
     min_speech: float = 0.35
-    end_silence: float = 0.7
+    end_silence: float = 0.5
     pre_roll: float = 0.3
-    max_utterance: float = 14.0
+    max_utterance: float = 8.0
     # thresholds relative to the adaptive noise floor
     start_ratio: float = 3.0
     keep_ratio: float = 1.8

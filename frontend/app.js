@@ -65,9 +65,14 @@
     isListening: false,
 
     // Playback state
-    playQueue: [], // { id, blobUrl }
-    isPlaying: false,
-    segmentAudio: new Map(), // id -> { base64, sampleRate }
+    // Streamed TTS parts are decoded into a Web Audio graph and scheduled back to back
+    // (gapless), then routed into the hidden <audio> element so setSinkId still picks the earphones.
+    playCtx: null,
+    playDest: null,
+    playHead: 0, // AudioContext time at which the next part starts
+    decodeChain: Promise.resolve(), // keeps parts in arrival order while decoding
+    playingCount: new Map(), // id -> number of scheduled parts still playing
+    segmentAudio: new Map(), // id -> [AudioBuffer] in part order
 
     // Transcript state
     segmentCards: new Map(), // id -> DOM element
@@ -111,6 +116,8 @@
     el.consentCheckbox = document.getElementById("consentCheckbox");
     el.cloneToggle = document.getElementById("cloneToggle");
     el.consentHint = document.getElementById("consentHint");
+    el.voiceStatus = document.getElementById("voiceStatus");
+    el.resetVoiceBtn = document.getElementById("resetVoiceBtn");
 
     el.transcriptFeed = document.getElementById("transcriptFeed");
     el.transcriptEmpty = document.getElementById("transcriptEmpty");
@@ -251,6 +258,9 @@
       case "audio":
         handleAudio(msg);
         break;
+      case "voice":
+        handleVoice(msg);
+        break;
       case "error":
         showToast(msg.message || "Unknown error");
         break;
@@ -342,10 +352,11 @@
   function handleSegment(msg) {
     const card = getOrCreateCard(msg.id);
 
-    card.querySelector(".lang-badge").textContent = languageBadgeText(msg.source_lang);
-
-    const sourceEl = card.querySelector(".card-source-text");
-    sourceEl.textContent = msg.source_text || "";
+    // Partial updates (e.g. translation arriving before TTS) leave source fields null.
+    if (msg.source_lang) card.querySelector(".lang-badge").textContent = languageBadgeText(msg.source_lang);
+    if (msg.source_text !== null && msg.source_text !== undefined) {
+      card.querySelector(".card-source-text").textContent = msg.source_text;
+    }
 
     const targetEl = card.querySelector(".card-target-text");
     if (msg.target_text === null || msg.target_text === undefined) {
@@ -419,66 +430,88 @@
   }
 
   function handleAudio(msg) {
-    App.segmentAudio.set(msg.id, { base64: msg.wav_base64, sampleRate: msg.sample_rate });
-    const card = App.segmentCards.get(msg.id);
-    if (card) {
-      const btn = card.querySelector(".play-again-btn");
+    if (msg.final) {
+      const card = App.segmentCards.get(msg.id);
+      const btn = card && card.querySelector(".play-again-btn");
       if (btn) btn.disabled = false;
+      return;
     }
-    enqueuePlayback(msg.id);
+    if (!msg.wav_base64) return;
+    const ctx = ensurePlaybackGraph();
+    const bytes = base64ToBytes(msg.wav_base64);
+    App.decodeChain = App.decodeChain
+      .then(() => ctx.decodeAudioData(bytes.buffer))
+      .then((buffer) => {
+        if (!App.segmentAudio.has(msg.id)) App.segmentAudio.set(msg.id, []);
+        App.segmentAudio.get(msg.id)[msg.part || 0] = buffer;
+        schedulePart(msg.id, buffer);
+      })
+      .catch((err) => console.warn("[LingoSync] audio decode failed", err));
+  }
+
+  function handleVoice(msg) {
+    if (!el.voiceStatus) return;
+    const locked = msg.state === "locked";
+    if (locked) {
+      el.voiceStatus.textContent = `Voice locked (${msg.seconds}s captured)`;
+    } else if (!msg.seconds) {
+      el.voiceStatus.textContent = "Voice: not captured yet";
+    } else {
+      el.voiceStatus.textContent = `Capturing voice… ${msg.seconds}s of ${msg.needed}s`;
+    }
+    el.voiceStatus.classList.toggle("is-locked", locked);
   }
 
   /* ------------------------------------------------------------------ *
-   *  Playback — single hidden <audio> element, strictly sequential
+   *  Playback — Web Audio graph, parts scheduled back to back
    * ------------------------------------------------------------------ */
 
-  function base64ToBlob(base64, mimeType) {
+  function base64ToBytes(base64) {
     const byteChars = atob(base64);
-    const byteNumbers = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mimeType });
+    const bytes = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+    return bytes;
   }
 
-  function enqueuePlayback(id) {
-    const data = App.segmentAudio.get(id);
-    if (!data) return;
-    const blob = base64ToBlob(data.base64, "audio/wav");
-    const blobUrl = URL.createObjectURL(blob);
-    App.playQueue.push({ id, blobUrl });
-    pumpPlaybackQueue();
+  function ensurePlaybackGraph() {
+    if (!App.playCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      App.playCtx = new Ctx();
+      App.playDest = App.playCtx.createMediaStreamDestination();
+      el.playbackAudio.srcObject = App.playDest.stream;
+    }
+    // Both need a user gesture the first time; startCapture/replay provide one.
+    if (App.playCtx.state === "suspended") App.playCtx.resume().catch(() => {});
+    if (el.playbackAudio.paused) el.playbackAudio.play().catch(() => {});
+    return App.playCtx;
+  }
+
+  function schedulePart(id, buffer) {
+    const ctx = App.playCtx;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(App.playDest);
+    // A small lead keeps the first part from starting in the past while the graph wakes up.
+    const startAt = Math.max(ctx.currentTime + 0.03, App.playHead);
+    src.start(startAt);
+    App.playHead = startAt + buffer.duration;
+
+    App.playingCount.set(id, (App.playingCount.get(id) || 0) + 1);
+    const delayMs = Math.max(0, (startAt - ctx.currentTime) * 1000);
+    setTimeout(() => setCardPlaying(id, true), delayMs);
+    src.onended = () => {
+      const left = (App.playingCount.get(id) || 1) - 1;
+      App.playingCount.set(id, left);
+      if (left <= 0) setCardPlaying(id, false);
+    };
   }
 
   function replaySegment(id) {
-    const data = App.segmentAudio.get(id);
-    if (!data) return;
-    const blob = base64ToBlob(data.base64, "audio/wav");
-    const blobUrl = URL.createObjectURL(blob);
-    // Play sooner than anything not yet started, but never interrupt current playback.
-    App.playQueue.unshift({ id, blobUrl });
-    pumpPlaybackQueue();
-  }
-
-  function pumpPlaybackQueue() {
-    if (App.isPlaying || App.playQueue.length === 0) return;
-    const item = App.playQueue.shift();
-    App.isPlaying = true;
-    setCardPlaying(item.id, true);
-
-    el.playbackAudio.src = item.blobUrl;
-    el.playbackAudio.currentTime = 0;
-    const cleanup = () => {
-      setCardPlaying(item.id, false);
-      URL.revokeObjectURL(item.blobUrl);
-      App.isPlaying = false;
-      pumpPlaybackQueue();
-    };
-    el.playbackAudio.onended = cleanup;
-    el.playbackAudio.onerror = cleanup;
-    const playPromise = el.playbackAudio.play();
-    if (playPromise && typeof playPromise.catch === "function") {
-      playPromise.catch(() => cleanup());
-    }
+    const parts = App.segmentAudio.get(id);
+    if (!parts || !parts.length) return;
+    ensurePlaybackGraph();
+    // Queued after whatever is already scheduled; never interrupts live playback.
+    parts.forEach((buffer) => buffer && schedulePart(id, buffer));
   }
 
   function setCardPlaying(id, isPlaying) {
@@ -638,6 +671,7 @@
 
   async function startCapture() {
     if (App.isListening) return;
+    ensurePlaybackGraph(); // unlock audio output while we still have the click gesture
 
     const constraints = {
       audio: {
@@ -907,6 +941,10 @@
 
     el.clearBtn.addEventListener("click", clearTranscript);
 
+    el.resetVoiceBtn.addEventListener("click", () => {
+      wsSend({ type: "reset_voice" });
+    });
+
     el.sourceLangSelect.addEventListener("change", () => {
       App.settings.sourceLang = el.sourceLangSelect.value;
       saveSettings();
@@ -998,12 +1036,8 @@
   }
 
   function clearTranscript() {
-    App.playQueue.forEach((item) => URL.revokeObjectURL(item.blobUrl));
-    App.playQueue = [];
-    App.isPlaying = false;
-    el.playbackAudio.pause();
-    el.playbackAudio.removeAttribute("src");
     App.segmentAudio.clear();
+    App.playingCount.clear();
     App.segmentCards.clear();
     el.transcriptFeed.innerHTML = "";
     el.transcriptEmpty.style.display = "";
