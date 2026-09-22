@@ -41,6 +41,18 @@ Measured via ws_client (still ~12 GB swap in use):
 | utt 2 (locked) | 6.9 s | ~0 | 1.4 s | 9.9 s |
 Now ASR is the bottleneck. End of speech → first audio ≈ 8–10 s under swap.
 
+## Session 3 (2026-09-22 night): Parakeet ASR, fewer false translations
+Live test log showed (1) Whisper inventing "Grazie." / "Grazie a tutti." from room noise (5x), each spoken aloud,
+(2) English speech forced into broken Italian, (3) ASR ~6 s. Changes:
+- ASR default = NVIDIA Parakeet TDT 0.6B v3 (`parakeet-mlx`, 25 European langs). Returns nothing on silence/noise.
+  Language from the transcript via `lingua` (restricted to Parakeet's languages); P(en) >= 0.3 => treated as English (silent).
+  Short lines (<= 3 words) keep the conversation's language (`VoiceProfile.last_lang`) — "Campania." was scored Romanian.
+  Whisper remains for non-European sources or `LINGOSYNC_ASR=whisper`, with a noise-phrase filter.
+- Argos warmed at startup. Argos logging silenced.
+Measured (ws_client --realtime, IT/EN/IT): ASR 0.3–0.9 s (was 6 s), end of speech -> first audio 1.6–3.4 s (was 9.7 s).
+Known: Chatterbox generates slower than real time here (6 s of audio takes ~9–10 s), so streamed playback may pause
+between parts on long sentences. Options: small client pre-buffer, or free memory (swap ~14 GB).
+
 ## Next steps
 1. Live test in Chrome: `./run.sh`, http://127.0.0.1:8765, laptop mic + earphones, consent on. Not yet done
    (needs a person and a mic). Listen to `tests/out_ws_*.wav` for voice quality.

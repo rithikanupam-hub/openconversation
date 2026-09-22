@@ -19,6 +19,7 @@ from .vad import SAMPLE_RATE, Segmenter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("lingosync.server")
+logging.getLogger("argostranslate").setLevel(logging.WARNING)  # logs every token otherwise
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"

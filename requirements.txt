@@ -5,3 +5,5 @@ soundfile
 mlx-whisper
 mlx-audio
 argostranslate
+parakeet-mlx
+lingua-language-detector

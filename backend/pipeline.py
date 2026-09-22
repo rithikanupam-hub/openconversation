@@ -20,7 +20,15 @@ import soundfile as sf
 
 log = logging.getLogger("lingosync.pipeline")
 
+# ASR: NVIDIA Parakeet TDT v3 (fast, 25 European languages, no silence hallucinations) by default;
+# Whisper is used for languages Parakeet does not cover, or everywhere with LINGOSYNC_ASR=whisper.
+ASR_ENGINE = os.environ.get("LINGOSYNC_ASR", "parakeet")
+PARAKEET_MODEL = os.environ.get("LINGOSYNC_PARAKEET_MODEL", "mlx-community/parakeet-tdt-0.6b-v3")
 ASR_MODEL = os.environ.get("LINGOSYNC_ASR_MODEL", "mlx-community/whisper-large-v3-turbo")
+PARAKEET_LANGS = {"bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt",
+                  "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"}
+# Below this confidence that a line is English (the listener's language) we still translate it.
+NATIVE_MIN_CONF = 0.3
 SR16 = 16_000
 
 LANGUAGES = [
@@ -57,9 +65,18 @@ KOKORO_LANG = {"en": "a", "it": "i", "es": "e", "fr": "f", "pt": "p", "hi": "h",
 # Whisper hallucinations on near-silence / noise.
 _HALLUCINATIONS = re.compile(
     r"(sottotitoli|sous-titres|subtitles|untertitel|amara\.org|qtss|grazie per aver guardato|"
-    r"thanks for watching|thank you for watching)",
+    r"grazie per la visione|thanks for watching|thank you for watching)",
     re.I,
 )
+# Whole-utterance phrases Whisper invents from background noise (seen live: "Grazie.", "Grazie a tutti.").
+_NOISE_PHRASES = re.compile(r"^(grazie( a tutti| mille)?|thank you( all)?|thanks|merci|danke|gracias|obrigad[oa]|"
+                            r"ciao|you|bye)$", re.I)
+
+
+def _junk(text: str) -> bool:
+    """True for transcripts that are not worth translating: no words, one letter, bare filler."""
+    words = re.findall(r"\w+", text)
+    return not words or (len(words) == 1 and len(words[0]) <= 1)
 
 
 def _same_text(a: str, b: str) -> bool:
@@ -95,6 +112,7 @@ class VoiceProfile:
     max_seconds: float = 12.0
     lock_seconds: float = 6.0
     conds: object = None  # engine-specific cached conditioning once locked
+    last_lang: str | None = None  # the foreign language this conversation has been in
 
     @property
     def seconds(self) -> float:
@@ -138,6 +156,7 @@ class VoiceProfile:
     def clear(self) -> None:
         self.clips = []
         self.conds = None
+        self.last_lang = None
 
 
 @dataclass
@@ -158,8 +177,63 @@ class Pipeline:
         self._tts_id: str | None = None
         self._tts_model = None
         self._argos_ready: set[tuple[str, str]] = set()
+        self._parakeet_model = None
+        self._lid = None
 
     # ---------------------------------------------------------------- ASR
+    def _parakeet(self, audio16: np.ndarray) -> str:
+        import mlx.core as mx
+        from parakeet_mlx.audio import get_logmel
+
+        if self._parakeet_model is None:
+            from parakeet_mlx import from_pretrained
+            log.info("Loading Parakeet ASR (%s)", PARAKEET_MODEL)
+            self._parakeet_model = from_pretrained(PARAKEET_MODEL)
+        m = self._parakeet_model
+        return m.generate(get_logmel(mx.array(audio16), m.preprocessor_config))[0].text.strip()
+
+    def _detect_lang(self, text: str, hint: str | None = None) -> tuple[str, float]:
+        """Language of a transcript (Parakeet gives none). Returns (code, P(english)).
+
+        Short fragments are ambiguous ("Campania." scored Romanian), so for <= 3 words the
+        conversation's current language wins whenever it is at all plausible.
+        """
+        if self._lid is None:
+            from lingua import IsoCode639_1, LanguageDetectorBuilder
+            # lingua lacks a few (e.g. Maltese); those are simply not candidates
+            codes = [getattr(IsoCode639_1, c.upper()) for c in sorted(PARAKEET_LANGS) if hasattr(IsoCode639_1, c.upper())]
+            self._lid = LanguageDetectorBuilder.from_iso_codes_639_1(*codes).with_preloaded_language_models().build()
+        conf = self._lid.compute_language_confidence_values(text)
+        if not conf:
+            return hint or "en", 0.0
+        score = {c.language.iso_code_639_1.name.lower(): c.value for c in conf}
+        best = conf[0].language.iso_code_639_1.name.lower()
+        if hint and hint != best and len(text.split()) <= 3 and score.get(hint, 0.0) >= 0.05:
+            best = hint
+        return best, score.get("en", 0.0)
+
+    def transcribe(self, audio16: np.ndarray, source_lang: str, target_lang: str,
+                   hint: str | None = None) -> tuple[str | None, str]:
+        """Returns (text or None if nothing worth translating, language code)."""
+        use_parakeet = ASR_ENGINE == "parakeet" and (source_lang == "auto" or source_lang in PARAKEET_LANGS)
+        if use_parakeet:
+            text = self._parakeet(audio16)
+            if not text or _junk(text):
+                return None, source_lang
+            if source_lang != "auto":
+                return text, source_lang
+            lang, p_target = self._detect_lang(text, hint)
+            if target_lang == "en" and p_target >= NATIVE_MIN_CONF:
+                lang = "en"  # mixed or unsure lines lean towards "already understood": stay silent
+            return text, lang
+        res = self._whisper(audio16, task="transcribe", language=source_lang)
+        text = self._clean(res)
+        lang = res.get("language") or (source_lang if source_lang != "auto" else "en")
+        if text and (_junk(text) or _NOISE_PHRASES.match(re.sub(r"[^\w\s]", "", text).strip())):
+            log.info("Dropping likely Whisper noise hallucination: %r", text)
+            text = None
+        return text, lang
+
     def _whisper(self, audio16: np.ndarray, task: str, language: str | None) -> dict:
         import mlx_whisper
 
@@ -285,8 +359,18 @@ class Pipeline:
     def warmup(self, engine: str) -> None:
         with self.lock:
             t = time.time()
-            self._whisper(np.zeros(SR16, np.float32), task="transcribe", language="en")
-            log.info("ASR ready in %.1fs", time.time() - t)
+            if ASR_ENGINE == "parakeet":
+                self._parakeet(np.zeros(SR16, np.float32))
+                self._detect_lang("warm up the language detector")
+            else:
+                self._whisper(np.zeros(SR16, np.float32), task="transcribe", language="en")
+            log.info("ASR (%s) ready in %.1fs", ASR_ENGINE, time.time() - t)
+            t = time.time()
+            try:
+                self._argos("Buongiorno", "it", "en")  # first translation otherwise costs ~2 s
+            except Exception as e:  # noqa: BLE001 - offline without the package is fine
+                log.warning("Argos warmup skipped: %s", e)
+            log.info("Translation ready in %.1fs", time.time() - t)
             t = time.time()
             self._load_tts(engine)
             log.info("TTS %s ready in %.1fs", engine, time.time() - t)
@@ -301,10 +385,8 @@ class Pipeline:
         timings: dict = {}
         with self.lock:
             t0 = time.time()
-            res = self._whisper(audio16, task="transcribe", language=source_lang)
+            text, detected = self.transcribe(audio16, source_lang, target_lang, profile.last_lang)
             timings["asr_ms"] = int((time.time() - t0) * 1000)
-            text = self._clean(res)
-            detected = res.get("language") or (source_lang if source_lang != "auto" else "en")
             if not text:
                 return Result("", detected, None, target_lang, None, 0, timings, skipped="no_speech")
             if on_transcript:
@@ -322,6 +404,7 @@ class Pipeline:
                 log.info("Treating %s utterance as %s (translation unchanged): %r", detected, target_lang, text)
                 return Result(text, target_lang, text, target_lang, None, 0, timings, skipped="same_language")
 
+            profile.last_lang = detected
             # Learn the voice only from foreign speech, so the listener's own voice never leaks in.
             cloning = clone and ENGINES[engine]["clones"]
             if cloning:
