@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>LingoSync AI — Real-time meeting translator</title>
+<meta name="description" content="Hear every colleague in your language, in their voice." />
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.2 0-2.3-.3-3.3-.7L4 20l1.1-4.4C4.4 14.5 4 13.3 4 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M9 10.5h6M9 13.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <span class="brand-name">LingoSync <span class="brand-ai">AI</span></span>
+        <span class="brand-tagline">Hear every colleague in your language, in their voice.</span>
+      </div>
+    </div>
+    <div class="header-status">
+      <span id="connState" class="pill pill-conn" data-state="connecting">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="connStateText">Connecting…</span>
+      </span>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- How it works strip -->
+    <section class="how-it-works" aria-label="How it works">
+      <ol>
+        <li>
+          <span class="step-num">1</span>
+          <span class="step-icon" aria-hidden="true">🎙️</span>
+          <span class="step-label">Laptop mic listens</span>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <span class="step-icon" aria-hidden="true">🔁</span>
+          <span class="step-label">Translate + clone voice locally</span>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <span class="step-icon" aria-hidden="true">🎧</span>
+          <span class="step-label">Your earphones hear it live</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Status / meter row -->
+    <section class="status-row" aria-label="Pipeline status">
+      <span id="pipelineStatus" class="pill pill-pipeline" data-state="idle">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="pipelineStatusText">Idle</span>
+      </span>
+
+      <div class="level-meter" role="img" aria-label="Microphone input level">
+        <div class="level-meter-track">
+          <div id="levelBar" class="level-meter-fill"></div>
+        </div>
+        <span id="speechIndicator" class="speech-indicator" data-speech="false">Speech</span>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls-card" aria-label="Controls">
+      <div class="controls-primary">
+        <button id="startStopBtn" type="button" class="btn btn-primary btn-big" aria-pressed="false">
+          <span id="startStopIcon" aria-hidden="true">▶</span>
+          <span id="startStopLabel">Start listening</span>
+        </button>
+        <button id="flushBtn" type="button" class="btn btn-secondary" disabled>
+          Translate now
+        </button>
+        <button id="clearBtn" type="button" class="btn btn-ghost">
+          Clear transcript
+        </button>
+      </div>
+
+      <div class="controls-grid">
+        <label class="field">
+          <span class="field-label">Source language</span>
+          <select id="sourceLangSelect"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Target language</span>
+          <select id="targetLangSelect"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Engine</span>
+          <select id="engineSelect"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Microphone</span>
+          <select id="micSelect"></select>
+        </label>
+
+        <label class="field" id="outputDeviceField">
+          <span class="field-label">Audio output</span>
+          <select id="outputSelect"></select>
+        </label>
+
+        <div class="field">
+          <span class="field-label">Volume</span>
+          <div class="volume-row">
+            <button id="muteBtn" type="button" class="btn btn-icon" aria-pressed="false" title="Mute playback">
+              <span id="muteIcon" aria-hidden="true">🔊</span>
+            </button>
+            <input id="volumeSlider" type="range" min="0" max="100" value="100" aria-label="Playback volume" />
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-toggles">
+        <label class="toggle-row">
+          <input type="checkbox" id="echoCancelToggle" checked />
+          <span>Echo cancellation</span>
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="noiseSuppressToggle" checked />
+          <span>Noise suppression</span>
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="autoGainToggle" checked />
+          <span>Auto gain control</span>
+        </label>
+      </div>
+
+      <div class="consent-block">
+        <label class="toggle-row consent-row">
+          <input type="checkbox" id="consentCheckbox" />
+          <span>I have the speaker's permission to clone their voice</span>
+        </label>
+        <label class="toggle-row clone-row">
+          <input type="checkbox" id="cloneToggle" disabled />
+          <span>Clone speaker's voice</span>
+        </label>
+        <p id="consentHint" class="hint">
+          Voices are cloned only with the speaker's permission. Check the consent box above to enable voice cloning.
+        </p>
+      </div>
+    </section>
+
+    <!-- Transcript feed -->
+    <section class="transcript-section" aria-label="Transcript">
+      <div class="transcript-header">
+        <h2>Transcript</h2>
+        <span id="transcriptEmpty" class="transcript-empty-hint">Start listening to see live translations here.</span>
+      </div>
+      <div id="transcriptFeed" class="transcript-feed" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <div id="toastContainer" class="toast-container" aria-live="assertive"></div>
+
+  <audio id="playbackAudio" preload="auto" style="display:none"></audio>
+
+  <footer class="app-footer">
+    <span>LingoSync AI — on-device style real-time translation for in-person meetings.</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
