@@ -6,6 +6,7 @@ drive from several threads at once.
 """
 from __future__ import annotations
 
+import difflib
 import io
 import logging
 import os
@@ -59,6 +60,11 @@ _HALLUCINATIONS = re.compile(
     r"thanks for watching|thank you for watching)",
     re.I,
 )
+
+
+def _same_text(a: str, b: str) -> bool:
+    norm = lambda t: re.sub(r"[^\w\s]", "", t.lower()).split()
+    return difflib.SequenceMatcher(None, norm(a), norm(b)).ratio() >= 0.8
 
 
 def wav_bytes(audio: np.ndarray, sr: int) -> bytes:
@@ -304,10 +310,6 @@ class Pipeline:
             if on_transcript:
                 on_transcript(text, detected)
 
-            cloning = clone and ENGINES[engine]["clones"]
-            if cloning:
-                profile.add(audio16)
-
             if detected == target_lang:
                 # Listener already understands this; no translation or TTS needed.
                 return Result(text, detected, text, target_lang, None, 0, timings, skipped="same_language")
@@ -315,6 +317,15 @@ class Pipeline:
             t0 = time.time()
             target = self.translate(text, detected, target_lang, audio16)
             timings["mt_ms"] = int((time.time() - t0) * 1000)
+            if _same_text(text, target):
+                # Whisper often mislabels short English as it/es/...; "translating" it changes nothing.
+                log.info("Treating %s utterance as %s (translation unchanged): %r", detected, target_lang, text)
+                return Result(text, target_lang, text, target_lang, None, 0, timings, skipped="same_language")
+
+            # Learn the voice only from foreign speech, so the listener's own voice never leaks in.
+            cloning = clone and ENGINES[engine]["clones"]
+            if cloning:
+                profile.add(audio16)
             if on_translation:
                 on_translation(target, dict(timings))
 

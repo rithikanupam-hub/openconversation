@@ -789,3 +789,7 @@ select:disabled {
 }
 .voice-row .hint { margin: 0; }
 .voice-row .is-locked { color: var(--success, #2e9d5b); }
+
+.transcript-card.is-native { opacity: 0.7; }
+.transcript-card.is-native .card-target-text { font-size: 0.85em; font-style: italic; }
+.transcript-card.is-native .play-again-btn { display: none; }

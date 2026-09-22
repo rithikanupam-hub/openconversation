@@ -9,15 +9,20 @@ import numpy as np, soundfile as sf, websockets
 ap = argparse.ArgumentParser()
 ap.add_argument("--url", default="ws://127.0.0.1:8765/ws")
 ap.add_argument("--times", type=int, default=2)
+ap.add_argument("--clips", nargs="+", default=None,
+                help="play these wavs in order as a conversation (overrides --times)")
 ap.add_argument("--realtime", action="store_true", help="pace frames at real time (default 4x)")
 args = ap.parse_args()
 
 
 async def main():
-    audio, sr = sf.read("tests/it_sample.wav", dtype="float32")
-    assert sr == 16000
-    pcm = (np.clip(audio, -1, 1) * 32767).astype(np.int16)
-    silence = np.zeros(sr * 2, np.int16)
+    clips = args.clips or ["tests/it_sample.wav"] * args.times
+    pcms = []
+    for path in clips:
+        audio, sr = sf.read(path, dtype="float32")
+        assert sr == 16000, f"{path} must be 16 kHz mono"
+        pcms.append((np.clip(audio, -1, 1) * 32767).astype(np.int16))
+    silence = np.zeros(16000 * 2, np.int16)
     step = 1600  # 100 ms, as the browser worklet sends
     pace = 0.1 if args.realtime else 0.025
     async with websockets.connect(args.url, max_size=None) as ws:
@@ -26,7 +31,7 @@ async def main():
         spoke_end: dict = {}
         parts: dict = {}
         done = asyncio.Event()
-        expected = args.times
+        expected = len(clips)
 
         async def reader():
             finished = 0
@@ -35,6 +40,10 @@ async def main():
                 t = m["type"]
                 if t == "level":
                     continue
+                if t == "segment" and m.get("skipped"):
+                    finished += 1  # e.g. English: transcribed, nothing to play
+                    if finished >= expected:
+                        done.set()
                 if t == "audio":
                     uid = m["id"]
                     if m.get("final"):
@@ -57,7 +66,7 @@ async def main():
                     done.set()
 
         rtask = asyncio.create_task(reader())
-        for n in range(1, args.times + 1):
+        for n, pcm in enumerate(pcms, 1):
             for i in range(0, len(pcm), step):
                 await ws.send(pcm[i:i + step].tobytes())
                 await asyncio.sleep(pace)

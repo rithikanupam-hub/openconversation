@@ -359,7 +359,12 @@
     }
 
     const targetEl = card.querySelector(".card-target-text");
-    if (msg.target_text === null || msg.target_text === undefined) {
+    const native = msg.skipped === "same_language";
+    card.classList.toggle("is-native", native);
+    if (native) {
+      // Spoken in the listener's own language: show it once, nothing is played.
+      targetEl.textContent = "No translation needed";
+    } else if (msg.target_text === null || msg.target_text === undefined) {
       targetEl.innerHTML = '<span class="shimmer" aria-hidden="true"></span><span class="sr-only">Translating…</span>';
     } else {
       targetEl.textContent = msg.target_text;
