@@ -72,6 +72,10 @@
     playHead: 0, // AudioContext time at which the next part starts
     decodeChain: Promise.resolve(), // keeps parts in arrival order while decoding
     playingCount: new Map(), // id -> number of scheduled parts still playing
+    // TTS can run slower than real time, so each new utterance waits this long before playing.
+    // It grows when a sentence still stalls mid-way and shrinks slowly while playback is smooth.
+    prebuffer: 1.0,
+    lastScheduledId: null,
     segmentAudio: new Map(), // id -> [AudioBuffer] in part order
 
     // Transcript state
@@ -449,7 +453,7 @@
       .then((buffer) => {
         if (!App.segmentAudio.has(msg.id)) App.segmentAudio.set(msg.id, []);
         App.segmentAudio.get(msg.id)[msg.part || 0] = buffer;
-        schedulePart(msg.id, buffer);
+        schedulePart(msg.id, buffer, { live: true });
       })
       .catch((err) => console.warn("[LingoSync] audio decode failed", err));
   }
@@ -491,13 +495,30 @@
     return App.playCtx;
   }
 
-  function schedulePart(id, buffer) {
+  const PREBUFFER_MIN = 0.5;
+  const PREBUFFER_MAX = 3.0;
+
+  function schedulePart(id, buffer, { live = false } = {}) {
     const ctx = App.playCtx;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(App.playDest);
-    // A small lead keeps the first part from starting in the past while the graph wakes up.
-    const startAt = Math.max(ctx.currentTime + 0.03, App.playHead);
+    const now = ctx.currentTime;
+    const newUtterance = id !== App.lastScheduledId;
+    let startAt;
+    if (live && newUtterance) {
+      // Hold the first part back so later parts arrive before they are needed.
+      startAt = Math.max(now + App.prebuffer, App.playHead);
+      App.prebuffer = Math.max(PREBUFFER_MIN, App.prebuffer - 0.1);
+    } else {
+      if (live && now > App.playHead) {
+        // The previous part ran out before this one arrived: an audible gap. Buffer more next time.
+        App.prebuffer = Math.min(PREBUFFER_MAX, App.prebuffer + (now - App.playHead) + 0.2);
+      }
+      // A small lead keeps a part from starting in the past while the graph wakes up.
+      startAt = Math.max(now + 0.03, App.playHead);
+    }
+    if (live) App.lastScheduledId = id; // replays do not count as a new live utterance
     src.start(startAt);
     App.playHead = startAt + buffer.duration;
 

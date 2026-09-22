@@ -50,7 +50,9 @@ Live test log showed (1) Whisper inventing "Grazie." / "Grazie a tutti." from ro
   Whisper remains for non-European sources or `LINGOSYNC_ASR=whisper`, with a noise-phrase filter.
 - Argos warmed at startup. Argos logging silenced.
 Measured (ws_client --realtime, IT/EN/IT): ASR 0.3–0.9 s (was 6 s), end of speech -> first audio 1.6–3.4 s (was 9.7 s).
-Known: Chatterbox generates slower than real time here (6 s of audio takes ~9–10 s), so streamed playback may pause
+Chatterbox generates slower than real time here (6 s of audio takes ~9–10 s). Client pre-buffer added (session 3b):
+first part of each utterance waits `App.prebuffer` (starts 1.0 s, +gap on a mid-sentence stall, -0.1 s per smooth one, 0.5–3 s).
+Was: streamed playback may pause
 between parts on long sentences. Options: small client pre-buffer, or free memory (swap ~14 GB).
 
 ## Next steps
