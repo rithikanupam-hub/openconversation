@@ -3,3 +3,4 @@ __pycache__/
 tests/out_*.wav
 tests/*.aiff
 *.log
+certs/

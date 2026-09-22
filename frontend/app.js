@@ -486,12 +486,22 @@
     if (!App.playCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       App.playCtx = new Ctx();
-      App.playDest = App.playCtx.createMediaStreamDestination();
-      el.playbackAudio.srcObject = App.playDest.stream;
+      // Parts connect to App.playDest (a gain node, so volume/mute work on every route).
+      App.playDest = App.playCtx.createGain();
+      if (supportsSetSinkId()) {
+        // Desktop Chrome: route through the hidden <audio> so the earphone picker (setSinkId) applies.
+        const streamDest = App.playCtx.createMediaStreamDestination();
+        App.playDest.connect(streamDest);
+        el.playbackAudio.srcObject = streamDest.stream;
+      } else {
+        // Phones (iOS Safari has no setSinkId): play directly; the OS routes to connected earphones.
+        App.playDest.connect(App.playCtx.destination);
+      }
+      applyVolumeAndMute();
     }
     // Both need a user gesture the first time; startCapture/replay provide one.
     if (App.playCtx.state === "suspended") App.playCtx.resume().catch(() => {});
-    if (el.playbackAudio.paused) el.playbackAudio.play().catch(() => {});
+    if (supportsSetSinkId() && el.playbackAudio.paused) el.playbackAudio.play().catch(() => {});
     return App.playCtx;
   }
 
@@ -546,8 +556,8 @@
   }
 
   function applyVolumeAndMute() {
-    el.playbackAudio.volume = clamp01(App.settings.volume / 100);
-    el.playbackAudio.muted = !!App.settings.muted;
+    const volume = App.settings.muted ? 0 : clamp01(App.settings.volume / 100);
+    if (App.playDest) App.playDest.gain.value = volume; // the <audio> element stays at full volume
     el.muteIcon.textContent = App.settings.muted ? "🔇" : "🔊";
     el.muteBtn.setAttribute("aria-pressed", String(!!App.settings.muted));
   }
