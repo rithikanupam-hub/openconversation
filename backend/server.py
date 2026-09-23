@@ -27,6 +27,15 @@ DEFAULT_ENGINE = os.environ.get("LINGOSYNC_ENGINE", "chatterbox_turbo")
 
 app = FastAPI(title="LingoSync AI")
 app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
+
+
+@app.middleware("http")
+async def _no_stale_ui(request, call_next):
+    # Browsers (and phones) must revalidate the UI files, or a redesign keeps loading old CSS/JS.
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 # One worker: MLX models must not be driven concurrently.
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pipeline")
 warm = {"ready": False, "error": None}

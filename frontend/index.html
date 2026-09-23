@@ -3,175 +3,236 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>LingoSync AI — Real-time meeting translator</title>
+<title>lingosync</title>
 <meta name="description" content="Hear every colleague in your language, in their voice." />
-<link rel="stylesheet" href="/static/style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/style.css?v=4" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
 
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.2 0-2.3-.3-3.3-.7L4 20l1.1-4.4C4.4 14.5 4 13.3 4 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M9 10.5h6M9 13.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-      </span>
-      <div class="brand-text">
-        <span class="brand-name">LingoSync <span class="brand-ai">AI</span></span>
-        <span class="brand-tagline">Hear every colleague in your language, in their voice.</span>
-      </div>
-    </div>
-    <div class="header-status">
-      <span id="connState" class="pill pill-conn" data-state="connecting">
-        <span class="dot" aria-hidden="true"></span>
-        <span id="connStateText">Connecting…</span>
-      </span>
-    </div>
-  </header>
+  <div class="page">
+    <header class="page-header">
+      <span class="page-title">lingosync</span>
+      <span class="page-subtitle">real-time voice translator</span>
+    </header>
 
-  <main id="main">
-    <!-- How it works strip -->
-    <section class="how-it-works" aria-label="How it works">
-      <ol>
-        <li>
-          <span class="step-num">1</span>
-          <span class="step-icon" aria-hidden="true">🎙️</span>
-          <span class="step-label">Laptop mic listens</span>
-        </li>
-        <li>
-          <span class="step-num">2</span>
-          <span class="step-icon" aria-hidden="true">🔁</span>
-          <span class="step-label">Translate + clone voice locally</span>
-        </li>
-        <li>
-          <span class="step-num">3</span>
-          <span class="step-icon" aria-hidden="true">🎧</span>
-          <span class="step-label">Your earphones hear it live</span>
-        </li>
-      </ol>
-    </section>
+    <main id="main">
+      <div class="device" id="device">
+        <div class="device-sheen" aria-hidden="true"></div>
 
-    <!-- Status / meter row -->
-    <section class="status-row" aria-label="Pipeline status">
-      <span id="pipelineStatus" class="pill pill-pipeline" data-state="idle">
-        <span class="dot" aria-hidden="true"></span>
-        <span id="pipelineStatusText">Idle</span>
-      </span>
+        <!-- ============================= SCREEN ============================= -->
+        <div class="screen-bay">
+          <div class="screen" id="screen">
+            <div class="screen-glow" aria-hidden="true"></div>
 
-      <div class="level-meter" role="img" aria-label="Microphone input level">
-        <div class="level-meter-track">
-          <div id="levelBar" class="level-meter-fill"></div>
+            <div class="screen-topbar">
+              <span id="connState" class="pill pill-conn" data-state="connecting">
+                <span class="dot" aria-hidden="true"></span>
+                <span id="connStateText">connecting…</span>
+              </span>
+              <span id="pipelineStatus" class="pill pill-pipeline" data-state="idle">
+                <span class="dot" aria-hidden="true"></span>
+                <span id="pipelineStatusText">idle</span>
+              </span>
+            </div>
+
+            <div class="screen-hero">
+              <div class="lang-readout" id="langReadout">
+                <span class="lang-readout-from" id="langReadoutFrom">auto</span>
+                <span class="lang-readout-arrow" aria-hidden="true">→</span>
+                <span class="lang-readout-to" id="langReadoutTo">english</span>
+              </div>
+
+              <div class="voice-cluster">
+                <div class="voice-arc" id="voiceArc" style="--pct: 0;">
+                  <span class="voice-arc-dot" id="voiceArcDot" aria-hidden="true"></span>
+                </div>
+                <div class="voice-meter">
+                  <div class="audio-bars" id="audioBars" aria-hidden="true"></div>
+                  <div class="level-meter" role="img" aria-label="Microphone input level">
+                    <div class="level-meter-track">
+                      <div id="levelBar" class="level-meter-fill"></div>
+                    </div>
+                  </div>
+                  <span id="speechIndicator" class="speech-indicator" data-speech="false">speech</span>
+                </div>
+              </div>
+
+              <p id="voiceStatus" class="voice-status" aria-live="polite">voice: not captured yet</p>
+            </div>
+
+            <div class="transcript-section" aria-label="Transcript">
+              <span id="transcriptEmpty" class="transcript-empty-hint">start listening to see live translations here.</span>
+              <div id="transcriptFeed" class="transcript-feed" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
-        <span id="speechIndicator" class="speech-indicator" data-speech="false">Speech</span>
-      </div>
-    </section>
 
-    <!-- Controls -->
-    <section class="controls-card" aria-label="Controls">
-      <div class="controls-primary">
-        <button id="startStopBtn" type="button" class="btn btn-primary btn-big" aria-pressed="false">
-          <span id="startStopIcon" aria-hidden="true">▶</span>
-          <span id="startStopLabel">Start listening</span>
-        </button>
-        <button id="flushBtn" type="button" class="btn btn-secondary" disabled>
-          Translate now
-        </button>
-        <button id="clearBtn" type="button" class="btn btn-ghost">
-          Clear transcript
-        </button>
-      </div>
+        <!-- ============================= HARDWARE CONTROLS ============================= -->
+        <div class="device-controls">
+          <div class="wheel-cluster">
+            <div class="wheel-wrap" data-role="source">
+              <span class="hw-pill" aria-hidden="true"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><path d="M2 8h12M8 2v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>source</span>
+              <div class="wheel" id="sourceWheel" tabindex="0" role="listbox" aria-label="Source language" style="touch-action:none;">
+                <div class="wheel-track" id="sourceWheelTrack"></div>
+                <div class="wheel-frame" aria-hidden="true"></div>
+                <div class="wheel-shine" aria-hidden="true"></div>
+              </div>
+            </div>
 
-      <div class="controls-grid">
-        <label class="field">
-          <span class="field-label">Source language</span>
-          <select id="sourceLangSelect"></select>
-        </label>
+            <div class="wheel-wrap wheel-wrap--small" data-role="target">
+              <span class="hw-pill" aria-hidden="true"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><path d="M2 8h12M8 2v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>target</span>
+              <div class="wheel wheel--small" id="targetWheel" tabindex="0" role="listbox" aria-label="Target language" style="touch-action:none;">
+                <div class="wheel-track" id="targetWheelTrack"></div>
+                <div class="wheel-frame" aria-hidden="true"></div>
+                <div class="wheel-shine" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
 
-        <label class="field">
-          <span class="field-label">Target language</span>
-          <select id="targetLangSelect"></select>
-        </label>
+          <div class="switch-panel">
+            <div class="switch-item">
+              <label class="switch-label" for="consentCheckbox">
+                <span class="hw-pill hw-pill-dark" aria-hidden="true"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><path d="M8 2 9.6 6l4.4.4-3.3 2.9 1 4.3L8 11.3 4.3 13.6l1-4.3L2 6.4 6.4 6 8 2Z" fill="currentColor"/></svg>consent</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="consentCheckbox" />
+                <span class="switch-track"><span class="switch-knob"></span></span>
+              </label>
+            </div>
 
-        <label class="field">
-          <span class="field-label">Engine</span>
-          <select id="engineSelect"></select>
-        </label>
+            <div class="switch-item">
+              <label class="switch-label" for="cloneToggle">
+                <span class="hw-pill hw-pill-dark" aria-hidden="true"><svg viewBox="0 0 16 16" width="10" height="10" fill="none"><circle cx="8" cy="6" r="2.6" stroke="currentColor" stroke-width="1.4"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>clone voice</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="cloneToggle" disabled />
+                <span class="switch-track"><span class="switch-knob"></span></span>
+              </label>
+            </div>
 
-        <label class="field">
-          <span class="field-label">Microphone</span>
-          <select id="micSelect"></select>
-        </label>
+            <div class="switch-item">
+              <label class="switch-label" for="echoCancelToggle">
+                <span class="hw-pill hw-pill-dark" aria-hidden="true">echo cancel</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="echoCancelToggle" checked />
+                <span class="switch-track"><span class="switch-knob"></span></span>
+              </label>
+            </div>
 
-        <label class="field" id="outputDeviceField">
-          <span class="field-label">Audio output</span>
-          <select id="outputSelect"></select>
-        </label>
+            <div class="switch-item">
+              <label class="switch-label" for="noiseSuppressToggle">
+                <span class="hw-pill hw-pill-dark" aria-hidden="true">noise cut</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="noiseSuppressToggle" checked />
+                <span class="switch-track"><span class="switch-knob"></span></span>
+              </label>
+            </div>
 
-        <div class="field">
-          <span class="field-label">Volume</span>
-          <div class="volume-row">
-            <button id="muteBtn" type="button" class="btn btn-icon" aria-pressed="false" title="Mute playback">
-              <span id="muteIcon" aria-hidden="true">🔊</span>
+            <div class="switch-item">
+              <label class="switch-label" for="autoGainToggle">
+                <span class="hw-pill hw-pill-dark" aria-hidden="true">auto gain</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="autoGainToggle" checked />
+                <span class="switch-track"><span class="switch-knob"></span></span>
+              </label>
+            </div>
+          </div>
+
+          <p id="consentHint" class="consent-hint">
+            i have the speaker's permission to clone their voice. voices are cloned only with consent.
+          </p>
+
+          <div class="ptt-row">
+            <button id="startStopBtn" type="button" class="ptt-button" aria-pressed="false">
+              <span class="ptt-ring" aria-hidden="true"></span>
+              <span class="ptt-face">
+                <span id="startStopIcon" class="ptt-icon" aria-hidden="true">▶</span>
+              </span>
             </button>
-            <input id="volumeSlider" type="range" min="0" max="100" value="100" aria-label="Playback volume" />
+            <span id="startStopLabel" class="ptt-label">start listening</span>
+          </div>
+
+          <button type="button" class="drawer-toggle" id="drawerToggle" aria-expanded="false" aria-controls="settingsDrawer">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="none" aria-hidden="true"><path d="M10 3v2.2M10 14.8V17M3 10h2.2M14.8 10H17M5.4 5.4l1.5 1.5M13.1 13.1l1.5 1.5M14.6 5.4l-1.5 1.5M6.9 13.1l-1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.5"/></svg>
+            settings
+          </button>
+        </div>
+
+        <!-- hidden native controls: source of truth for app.js -->
+        <div class="native-controls">
+          <label class="native-field">
+            <span>Source language</span>
+            <select id="sourceLangSelect"></select>
+          </label>
+          <label class="native-field">
+            <span>Target language</span>
+            <select id="targetLangSelect"></select>
+          </label>
+        </div>
+      </div>
+    </main>
+
+    <!-- ============================= SETTINGS DRAWER ============================= -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true">
+      <div class="drawer-inner">
+        <div class="drawer-header">
+          <h2>settings</h2>
+          <button type="button" class="drawer-close" id="drawerClose" aria-label="Close settings">✕</button>
+        </div>
+
+        <div class="drawer-body">
+          <div class="drawer-actions">
+            <button id="flushBtn" type="button" class="btn btn-primary" disabled>translate now</button>
+            <button id="clearBtn" type="button" class="btn btn-ghost">clear transcript</button>
+            <button type="button" id="resetVoiceBtn" class="btn btn-ghost">reset voice</button>
+          </div>
+
+          <label class="drawer-field">
+            <span class="drawer-field-label">engine</span>
+            <select id="engineSelect"></select>
+          </label>
+
+          <label class="drawer-field">
+            <span class="drawer-field-label">microphone</span>
+            <select id="micSelect"></select>
+          </label>
+
+          <label class="drawer-field" id="outputDeviceField">
+            <span class="drawer-field-label">audio output</span>
+            <select id="outputSelect"></select>
+          </label>
+
+          <div class="drawer-field">
+            <span class="drawer-field-label">volume</span>
+            <div class="volume-row">
+              <button id="muteBtn" type="button" class="btn btn-icon" aria-pressed="false" title="Mute playback">
+                <span id="muteIcon" aria-hidden="true">🔊</span>
+              </button>
+              <input id="volumeSlider" type="range" min="0" max="100" value="100" aria-label="Playback volume" />
+            </div>
           </div>
         </div>
       </div>
+    </aside>
 
-      <div class="controls-toggles">
-        <label class="toggle-row">
-          <input type="checkbox" id="echoCancelToggle" checked />
-          <span>Echo cancellation</span>
-        </label>
-        <label class="toggle-row">
-          <input type="checkbox" id="noiseSuppressToggle" checked />
-          <span>Noise suppression</span>
-        </label>
-        <label class="toggle-row">
-          <input type="checkbox" id="autoGainToggle" checked />
-          <span>Auto gain control</span>
-        </label>
-      </div>
-
-      <div class="consent-block">
-        <label class="toggle-row consent-row">
-          <input type="checkbox" id="consentCheckbox" />
-          <span>I have the speaker's permission to clone their voice</span>
-        </label>
-        <label class="toggle-row clone-row">
-          <input type="checkbox" id="cloneToggle" disabled />
-          <span>Clone speaker's voice</span>
-        </label>
-        <p id="consentHint" class="hint">
-          Voices are cloned only with the speaker's permission. Check the consent box above to enable voice cloning.
-        </p>
-        <div class="voice-row">
-          <span id="voiceStatus" class="hint" aria-live="polite">Voice: not captured yet</span>
-          <button type="button" id="resetVoiceBtn" class="btn btn-secondary">Reset voice</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Transcript feed -->
-    <section class="transcript-section" aria-label="Transcript">
-      <div class="transcript-header">
-        <h2>Transcript</h2>
-        <span id="transcriptEmpty" class="transcript-empty-hint">Start listening to see live translations here.</span>
-      </div>
-      <div id="transcriptFeed" class="transcript-feed" aria-live="polite"></div>
-    </section>
-  </main>
+    <footer class="app-footer">
+      <span>lingosync — on-device style real-time translation for in-person meetings.</span>
+    </footer>
+  </div>
 
   <div id="toastContainer" class="toast-container" aria-live="assertive"></div>
 
   <audio id="playbackAudio" preload="auto" style="display:none"></audio>
 
-  <footer class="app-footer">
-    <span>LingoSync AI — on-device style real-time translation for in-person meetings.</span>
-  </footer>
-
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=4"></script>
+  <script src="/static/ui.js?v=4"></script>
 </body>
 </html>

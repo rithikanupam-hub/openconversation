@@ -55,6 +55,14 @@ first part of each utterance waits `App.prebuffer` (starts 1.0 s, +gap on a mid-
 Was: streamed playback may pause
 between parts on long sentences. Options: small client pre-buffer, or free memory (swap ~14 GB).
 
+## Session 4 (2026-09-23): device UI + phone
+- New UI: orange "device" (index.html/style.css), `frontend/ui.js` drives it (analog wheels over the hidden
+  `<select>`s, settings drawer, audio bars from #levelBar, palette cards, voice arc). app.js logic unchanged
+  apart from the playback route. Asset links carry `?v=N`: bump it when changing CSS/JS; server also sends no-cache.
+- Phone: `./run.sh --phone` → https://<mac-ip>:8765 (self-signed cert in certs/). Without setSinkId (iOS),
+  playback goes straight to AudioContext.destination; volume is a GainNode on every route.
+  Not yet tried on a real phone.
+
 ## Next steps
 1. Live test in Chrome: `./run.sh`, http://127.0.0.1:8765, laptop mic + earphones, consent on. Not yet done
    (needs a person and a mic). Listen to `tests/out_ws_*.wav` for voice quality.
