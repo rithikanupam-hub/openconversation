@@ -61,6 +61,28 @@ async def _warm():
     asyncio.get_event_loop().run_in_executor(executor, go)
 
 
+CLIENTS: set = set()
+
+
+@app.on_event("startup")
+async def _keep_warm():
+    """Every 20 s while a page is connected and idle, touch every model (see Pipeline.keep_warm)."""
+    async def loop():
+        while True:
+            await asyncio.sleep(20)
+            if not CLIENTS or not warm["ready"]:
+                continue
+            if any(not c.queue.empty() or asyncio.get_event_loop().time() - c.last_activity < 20 for c in CLIENTS):
+                continue
+            engine = next(iter(CLIENTS)).cfg["engine"]
+            try:
+                await asyncio.get_event_loop().run_in_executor(executor, pipeline.keep_warm, engine)
+            except Exception:  # noqa: BLE001
+                log.exception("keep-warm failed")
+
+    asyncio.get_event_loop().create_task(loop())
+
+
 @app.get("/")
 async def index():
     return FileResponse(FRONTEND / "index.html")
@@ -94,6 +116,7 @@ class Session:
         self.next_id = 0
         self.loop = asyncio.get_event_loop()
         self.level_tick = 0.0
+        self.last_activity = 0.0  # loop time of the last utterance, for the keep-warm loop
 
     async def send(self, obj: dict):
         try:
@@ -192,6 +215,7 @@ class Session:
             await self.enqueue(utt.audio)
 
     async def enqueue(self, audio: np.ndarray):
+        self.last_activity = self.loop.time()
         self.next_id += 1
         await self.queue.put((self.next_id, audio, self.loop.time()))
         await self.status("speech", f"queued utterance {self.next_id}")
@@ -208,6 +232,7 @@ async def ws_endpoint(ws: WebSocket):
     await s.status("loading" if not warm["ready"] else "listening",
                    "downloading / loading models (first run takes a few minutes)" if not warm["ready"] else "")
     task = asyncio.create_task(s.worker())
+    CLIENTS.add(s)
     try:
         while True:
             msg = await ws.receive()
@@ -242,4 +267,5 @@ async def ws_endpoint(ws: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
+        CLIENTS.discard(s)
         task.cancel()

@@ -304,6 +304,7 @@ class Pipeline:
     def _argos(self, text: str, src: str, dst: str) -> str:
         import argostranslate.package as pkg
         import argostranslate.translate as tr
+        logging.getLogger("argostranslate.utils").setLevel(logging.WARNING)  # re-set: it logs every token
 
         if (src, dst) not in self._argos_ready:
             installed = {(p.from_code, p.to_code) for p in pkg.get_installed_packages()}
@@ -414,6 +415,27 @@ class Pipeline:
         return audio, sr
 
     # ------------------------------------------------------------ pipeline
+    def keep_warm(self, engine: str) -> None:
+        """A tiny pass through every stage so macOS doesn't page the models out while idle.
+
+        After 25 idle minutes the first sentence spent 29.5 s in ASR (language detector and
+        Parakeet paged out), and everything said meanwhile piled up behind it.
+        """
+        if not self.lock.acquire(blocking=False):
+            return  # real work is running; that keeps things warm anyway
+        try:
+            rng = np.random.default_rng()
+            if ASR_ENGINE == "parakeet":
+                self._parakeet((rng.standard_normal(SR16) * 1e-3).astype(np.float32))
+                self._detect_lang("buongiorno a tutti")
+            try:
+                self._argos("Ciao", "it", "en")
+            except Exception:  # noqa: BLE001
+                pass
+            self.synthesize("Hi.", "en", engine, None, None)
+        finally:
+            self.lock.release()
+
     def warmup(self, engine: str) -> None:
         import mlx.core as mx
 
