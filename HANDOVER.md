@@ -63,6 +63,23 @@ between parts on long sentences. Options: small client pre-buffer, or free memor
   playback goes straight to AudioContext.destination; volume is a GainNode on every route.
   Not yet tried on a real phone.
 
+## Session 5 (2026-09-23 evening): continuous flow
+Live meeting log (18:16–18:32) showed the English falling further behind (waits up to 27 s, "si salta un po'")
+because the browser still used Chatterbox (RTF ~1.5–1.8, slower than speech). Changes:
+- New default TTS `pocket_tts` = Kyutai Pocket TTS, `mlx-community/pocket-tts-4bit`: clones, streams 1 s parts,
+  RTF ~0.15 (6 s of English in ~0.8 s). Chatterbox stays selectable in settings.
+- Voice lock is engine-independent: `VoiceProfile.locked_ref` + per-engine `conds` cache.
+- Worker merges everything queued while busy into one pass (never falls behind in steps).
+- VAD soft cut: after 3 s, a 0.2 s breath closes the utterance (translation starts mid-monologue); hard cut 8 s.
+- Unsure short lines in an unheard language keep the conversation language (a lone "Um" had triggered a Latvian
+  package download mid-meeting).
+- One log line per utterance (`utt N: … waited … | asr … tts … | it->en | src -> tgt`); argos/stanza silenced.
+- MLX memory pinned (`LINGOSYNC_WIRED_GB`, default 4) + TTS warm-up generation at startup.
+- Frontend settings v2 moves saved `chatterbox_turbo` to the new default once; prebuffer starts at 0.6 s.
+- tests/ws_client.py now takes `--engine` (it was hard-coded to Chatterbox, which skewed earlier measurements).
+Measured (ws_client --realtime, 3 Italian clips back to back, Pocket 4-bit): end of speech -> first English
+0.5–0.8 s (2.2 s first sentence), TTS 0.8 s per 6 s, no queue wait.
+
 ## Next steps
 1. Live test in Chrome: `./run.sh`, http://127.0.0.1:8765, laptop mic + earphones, consent on. Not yet done
    (needs a person and a mic). Listen to `tests/out_ws_*.wav` for voice quality.

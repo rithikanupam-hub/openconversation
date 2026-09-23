@@ -26,6 +26,10 @@ class Segmenter:
     end_silence: float = 0.5
     pre_roll: float = 0.3
     max_utterance: float = 8.0
+    # Continuous flow: once an utterance is this long, a short breath (soft_silence) is enough
+    # to close it, so translation starts while the speaker is still talking.
+    soft_after: float = 3.0
+    soft_silence: float = 0.2
     # thresholds relative to the adaptive noise floor
     start_ratio: float = 3.0
     keep_ratio: float = 1.8
@@ -78,6 +82,8 @@ class Segmenter:
         total = sum(len(f) for f in self.speech_frames) / SAMPLE_RATE
         if self.silence_dur >= self.end_silence:
             return self._close(forced=False)
+        if total >= self.soft_after and self.silence_dur >= self.soft_silence:
+            return self._close(forced=False, silence=self.silence_dur)
         if total >= self.max_utterance:
             return self._close(forced=True)
         return None
@@ -87,7 +93,7 @@ class Segmenter:
             return self._close(forced=True)
         return None
 
-    def _close(self, forced: bool) -> Utterance | None:
+    def _close(self, forced: bool, silence: float | None = None) -> Utterance | None:
         audio = np.concatenate(self.speech_frames) if self.speech_frames else np.zeros(0, np.float32)
         spoken = self.speech_dur
         self.in_speech = False
@@ -97,7 +103,8 @@ class Segmenter:
         if spoken < self.min_speech:
             return None
         # trim trailing silence but leave ~150 ms
-        trim = int(max(0.0, self.end_silence - 0.15) * SAMPLE_RATE) if not forced else 0
+        tail = self.end_silence if silence is None else silence
+        trim = int(max(0.0, tail - 0.15) * SAMPLE_RATE) if not forced else 0
         if trim and len(audio) > trim:
             audio = audio[:-trim]
         return Utterance(audio=audio.astype(np.float32), forced=forced)

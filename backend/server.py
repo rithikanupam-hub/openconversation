@@ -19,11 +19,12 @@ from .vad import SAMPLE_RATE, Segmenter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("lingosync.server")
-logging.getLogger("argostranslate").setLevel(logging.WARNING)  # logs every token otherwise
+for _noisy in ("argostranslate", "argostranslate.utils", "stanza"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)  # they log every token otherwise
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
-DEFAULT_ENGINE = os.environ.get("LINGOSYNC_ENGINE", "chatterbox_turbo")
+DEFAULT_ENGINE = os.environ.get("LINGOSYNC_ENGINE", "pocket_tts")
 
 app = FastAPI(title="LingoSync AI")
 app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
@@ -119,7 +120,15 @@ class Session:
     async def worker(self):
         """Processes utterances strictly in order so playback never overlaps."""
         while True:
-            uid, audio = await self.queue.get()
+            uid, audio, queued_at = await self.queue.get()
+            # Catch up instead of falling behind: anything that queued while we were busy is
+            # joined into this one pass (one translation, one continuous stretch of speech).
+            merged = 1
+            while not self.queue.empty():
+                _, more, _ = self.queue.get_nowait()
+                audio = np.concatenate([audio, np.zeros(SAMPLE_RATE // 5, np.float32), more])
+                merged += 1
+            waited = self.loop.time() - queued_at
             cfg = dict(self.cfg)
             await self.status("transcribing", f"utterance {uid}: {len(audio)/SAMPLE_RATE:.1f}s")
 
@@ -152,6 +161,10 @@ class Session:
                 await self.status("listening", "")
                 continue
 
+            log.info("utt %d: %.1fs audio%s, waited %.1fs | %s | %s->%s%s | %r -> %r",
+                     uid, len(audio) / SAMPLE_RATE, f" ({merged} merged)" if merged > 1 else "", waited,
+                     " ".join(f"{k[:-3]} {v}" for k, v in res.timings.items()), res.source_lang, res.target_lang,
+                     f" [{res.skipped}]" if res.skipped else "", res.source_text[:80], (res.target_text or "")[:80])
             if res.skipped == "no_speech":
                 await self.status("listening", "no speech detected")
                 continue
@@ -177,7 +190,7 @@ class Session:
 
     async def enqueue(self, audio: np.ndarray):
         self.next_id += 1
-        await self.queue.put((self.next_id, audio))
+        await self.queue.put((self.next_id, audio, self.loop.time()))
         await self.status("speech", f"queued utterance {self.next_id}")
 
 

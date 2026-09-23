@@ -11,6 +11,7 @@ ap.add_argument("--url", default="ws://127.0.0.1:8765/ws")
 ap.add_argument("--times", type=int, default=2)
 ap.add_argument("--clips", nargs="+", default=None,
                 help="play these wavs in order as a conversation (overrides --times)")
+ap.add_argument("--engine", default="pocket_tts")
 ap.add_argument("--realtime", action="store_true", help="pace frames at real time (default 4x)")
 args = ap.parse_args()
 
@@ -27,7 +28,7 @@ async def main():
     pace = 0.1 if args.realtime else 0.025
     async with websockets.connect(args.url, max_size=None) as ws:
         await ws.send(json.dumps({"type": "config", "source_lang": "auto", "target_lang": "en",
-                                  "engine": "chatterbox_turbo", "clone": True, "consent": True}))
+                                  "engine": args.engine, "clone": True, "consent": True}))
         spoke_end: dict = {}
         parts: dict = {}
         done = asyncio.Event()

@@ -17,7 +17,8 @@
   const DEFAULT_SETTINGS = {
     sourceLang: "auto",
     targetLang: "en",
-    engine: "chatterbox_turbo",
+    v: 2,
+    engine: "pocket_tts",
     clone: true,
     consent: false,
     micId: "",
@@ -74,7 +75,7 @@
     playingCount: new Map(), // id -> number of scheduled parts still playing
     // TTS can run slower than real time, so each new utterance waits this long before playing.
     // It grows when a sentence still stalls mid-way and shrinks slowly while playback is smooth.
-    prebuffer: 1.0,
+    prebuffer: 0.6,
     lastScheduledId: null,
     segmentAudio: new Map(), // id -> [AudioBuffer] in part order
 
@@ -139,6 +140,11 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return { ...DEFAULT_SETTINGS };
       const parsed = JSON.parse(raw);
+      // v2 made Pocket TTS the default (continuous speech); move old saved defaults over once.
+      if (!parsed.v || parsed.v < 2) {
+        if (parsed.engine === "chatterbox_turbo") delete parsed.engine;
+        parsed.v = 2;
+      }
       return { ...DEFAULT_SETTINGS, ...parsed };
     } catch (err) {
       return { ...DEFAULT_SETTINGS };

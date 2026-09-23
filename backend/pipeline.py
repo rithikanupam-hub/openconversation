@@ -40,8 +40,14 @@ LANGUAGES = [
 ]
 
 ENGINES = {
+    "pocket_tts": {
+        "label": "Pocket TTS (clone, English out, faster than real time)",
+        "repo": os.environ.get("LINGOSYNC_POCKET_MODEL", "mlx-community/pocket-tts-4bit"),
+        "clones": True,
+        "targets": ["en"],
+    },
     "chatterbox_turbo": {
-        "label": "Chatterbox Turbo (clone, English out, fastest)",
+        "label": "Chatterbox Turbo (clone, English out, richer but slower)",
         "repo": os.environ.get("LINGOSYNC_CHATTERBOX_MODEL", "mlx-community/chatterbox-turbo-4bit"),
         "clones": True,
         "targets": ["en"],
@@ -105,13 +111,14 @@ class VoiceProfile:
 
     While collecting, clips are stacked newest first and looped to satisfy
     Chatterbox's > 5 s assertion. Once `lock_seconds` of real speech is
-    gathered the voice is locked: the TTS conditionals are computed once and
-    reused for every later utterance until `clear()` (the "Reset voice" button).
+    gathered the voice is locked: the reference is frozen, and each engine's
+    conditioning is computed from it once and reused until `clear()` ("Reset voice").
     """
     clips: list = field(default_factory=list)  # newest first, 16 kHz float32
     max_seconds: float = 12.0
     lock_seconds: float = 6.0
-    conds: object = None  # engine-specific cached conditioning once locked
+    locked_ref: np.ndarray | None = None  # frozen 16 kHz reference once locked
+    conds: dict = field(default_factory=dict)  # engine -> cached conditioning for locked_ref
     last_lang: str | None = None  # the foreign language this conversation has been in
 
     @property
@@ -120,7 +127,7 @@ class VoiceProfile:
 
     @property
     def locked(self) -> bool:
-        return self.conds is not None
+        return self.locked_ref is not None
 
     def add(self, clip: np.ndarray) -> None:
         if self.locked:
@@ -138,7 +145,13 @@ class VoiceProfile:
     def ready_to_lock(self) -> bool:
         return not self.locked and self.seconds >= self.lock_seconds
 
+    def lock(self) -> None:
+        self.locked_ref = self.reference()
+        log.info("Voice locked from %.1fs of speech", self.seconds)
+
     def reference(self, min_seconds: float = 5.5) -> np.ndarray | None:
+        if self.locked_ref is not None:
+            return self.locked_ref
         if not self.clips:
             return None
         ref = np.concatenate(self.clips)
@@ -155,7 +168,8 @@ class VoiceProfile:
 
     def clear(self) -> None:
         self.clips = []
-        self.conds = None
+        self.locked_ref = None
+        self.conds = {}
         self.last_lang = None
 
 
@@ -210,6 +224,10 @@ class Pipeline:
         best = conf[0].language.iso_code_639_1.name.lower()
         if hint and hint != best and len(text.split()) <= 3 and score.get(hint, 0.0) >= 0.05:
             best = hint
+        elif best not in ("en", hint) and (len(text.split()) < 4 or score[best] < 0.6):
+            # Unsure about a language we haven't heard yet (e.g. "Um" scored Latvian and triggered a
+            # mid-meeting package download): stay with the conversation's language instead.
+            best = hint or best
         return best, score.get("en", 0.0)
 
     def transcribe(self, audio16: np.ndarray, source_lang: str, target_lang: str,
@@ -307,17 +325,17 @@ class Pipeline:
         """Returns generate() kwargs for Chatterbox, using/locking the profile's cached conditionals."""
         if profile is None or not profile.clips:
             return {}  # model's built-in default voice
-        if profile.locked:
-            model._conds = profile.conds
-            return {}
-        ref = _resample(profile.reference(), SR16, sr)
         if profile.ready_to_lock():
-            t = time.time()
-            model.prepare_conditionals(ref, sample_rate=sr)
-            profile.conds = model._conds
-            log.info("Voice locked from %.1fs of speech (%.0f ms)", profile.seconds, (time.time() - t) * 1000)
+            profile.lock()
+        if profile.locked:
+            if "chatterbox_turbo" not in profile.conds:
+                t = time.time()
+                model.prepare_conditionals(_resample(profile.locked_ref, SR16, sr), sample_rate=sr)
+                profile.conds["chatterbox_turbo"] = model._conds
+                log.info("Chatterbox conditionals ready (%.0f ms)", (time.time() - t) * 1000)
+            model._conds = profile.conds["chatterbox_turbo"]
             return {}
-        return {"ref_audio": ref, "sample_rate": sr}
+        return {"ref_audio": _resample(profile.reference(), SR16, sr), "sample_rate": sr}
 
     def synthesize(self, text: str, lang: str, engine: str, profile: VoiceProfile | None,
                    ref_text: str | None, on_chunk=None) -> tuple[np.ndarray, int]:
@@ -328,6 +346,20 @@ class Pipeline:
         if engine == "chatterbox_turbo":
             kwargs.update(self._chatterbox_conds(model, profile, sr))
             kwargs.update(max_tokens=800)
+            if on_chunk:
+                kwargs.update(stream=True, streaming_interval=1.0)
+        elif engine == "pocket_tts":
+            import mlx.core as mx
+            if profile is not None and profile.clips:
+                if profile.ready_to_lock():
+                    profile.lock()
+                key = "pocket_tts"
+                ref = profile.conds.get(key) if profile.locked else None
+                if ref is None:
+                    ref = mx.array(_resample(profile.reference(), SR16, sr))
+                    if profile.locked:
+                        profile.conds[key] = ref
+                kwargs["ref_audio"] = ref
             if on_chunk:
                 kwargs.update(stream=True, streaming_interval=1.0)
         elif engine == "qwen3_tts":
@@ -357,6 +389,17 @@ class Pipeline:
 
     # ------------------------------------------------------------ pipeline
     def warmup(self, engine: str) -> None:
+        import mlx.core as mx
+
+        # Pin model memory in RAM. On a 16 GB Mac under swap, idle model buffers were paged out
+        # (1.5 GB of GPU buffers swapped), making each sentence's TTS 5-8x slower than benchmarks.
+        wired_gb = float(os.environ.get("LINGOSYNC_WIRED_GB", "4"))
+        if wired_gb > 0:
+            try:
+                mx.set_wired_limit(int(wired_gb * 2**30))
+                log.info("Pinned up to %.1f GB of model memory", wired_gb)
+            except Exception as e:  # noqa: BLE001 - older macOS / MLX
+                log.warning("Could not pin model memory: %s", e)
         with self.lock:
             t = time.time()
             if ASR_ENGINE == "parakeet":
@@ -373,6 +416,8 @@ class Pipeline:
             log.info("Translation ready in %.1fs", time.time() - t)
             t = time.time()
             self._load_tts(engine)
+            # One real generation compiles the kernels; otherwise the first sentence pays 2-5 s.
+            self.synthesize("Ready.", "en", engine, None, None)
             log.info("TTS %s ready in %.1fs", engine, time.time() - t)
 
     def run(self, audio16: np.ndarray, source_lang: str, target_lang: str, engine: str,
