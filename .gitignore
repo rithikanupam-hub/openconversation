@@ -4,3 +4,4 @@ tests/out_*.wav
 tests/*.aiff
 *.log
 certs/
+data/

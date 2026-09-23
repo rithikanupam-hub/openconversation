@@ -973,7 +973,11 @@
       if (App.isListening) {
         stopCapture();
       } else {
-        startCapture();
+        // A fresh press of Start begins a new conversation: capture the next speaker's voice anew.
+        // (Reconnects and mic switches call startCapture directly and keep the locked voice.)
+        startCapture().then(() => {
+          if (App.isListening) wsSend({ type: "reset_voice" });
+        });
       }
     });
 

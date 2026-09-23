@@ -30,6 +30,9 @@ PARAKEET_LANGS = {"bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "e
 # Below this confidence that a line is English (the listener's language) we still translate it.
 NATIVE_MIN_CONF = 0.3
 SR16 = 16_000
+# The locked voice is kept here so it survives reconnects and server restarts until "Reset voice",
+# a new "Start listening", or consent being withdrawn (all of which delete it).
+VOICE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "voice.wav")
 
 LANGUAGES = [
     ("auto", "Auto-detect"), ("it", "Italian"), ("en", "English"), ("es", "Spanish"),
@@ -148,6 +151,25 @@ class VoiceProfile:
     def lock(self) -> None:
         self.locked_ref = self.reference()
         log.info("Voice locked from %.1fs of speech", self.seconds)
+        try:
+            os.makedirs(os.path.dirname(VOICE_FILE), exist_ok=True)
+            sf.write(VOICE_FILE, self.locked_ref, SR16)
+        except OSError as e:
+            log.warning("Could not save the locked voice: %s", e)
+
+    @classmethod
+    def restore(cls) -> "VoiceProfile":
+        """The profile saved by an earlier lock, or an empty one."""
+        prof = cls()
+        if os.path.exists(VOICE_FILE):
+            try:
+                ref, sr = sf.read(VOICE_FILE, dtype="float32")
+                prof.clips = [ref if sr == SR16 else _resample(ref, sr, SR16)]
+                prof.locked_ref = prof.clips[0]
+                log.info("Restored locked voice (%.1fs)", prof.seconds)
+            except Exception as e:  # noqa: BLE001 - unreadable file: start fresh
+                log.warning("Ignoring unreadable saved voice: %s", e)
+        return prof
 
     def reference(self, min_seconds: float = 5.5) -> np.ndarray | None:
         if self.locked_ref is not None:
@@ -171,6 +193,10 @@ class VoiceProfile:
         self.locked_ref = None
         self.conds = {}
         self.last_lang = None
+        try:
+            os.remove(VOICE_FILE)
+        except FileNotFoundError:
+            pass
 
 
 @dataclass

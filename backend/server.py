@@ -40,6 +40,9 @@ async def _no_stale_ui(request, call_next):
 # One worker: MLX models must not be driven concurrently.
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pipeline")
 warm = {"ready": False, "error": None}
+# One voice for the whole conversation, shared by every connection: a reconnect or page reload
+# must not throw away the cloned voice mid-meeting.
+VOICE = VoiceProfile.restore()
 
 
 @app.on_event("startup")
@@ -86,7 +89,7 @@ class Session:
         self.cfg = {"source_lang": "auto", "target_lang": "en", "engine": DEFAULT_ENGINE,
                     "clone": True, "consent": False}
         self.seg = Segmenter()
-        self.profile = VoiceProfile()
+        self.profile = VOICE
         self.queue: asyncio.Queue = asyncio.Queue()
         self.next_id = 0
         self.loop = asyncio.get_event_loop()
@@ -199,6 +202,7 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     s = Session(ws)
     await s.send(hello_payload())
+    await s.send(s.profile.state())
     if warm["error"]:
         await s.send({"type": "error", "message": f"Model warmup failed: {warm['error']}"})
     await s.status("loading" if not warm["ready"] else "listening",
