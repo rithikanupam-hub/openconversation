@@ -6,6 +6,7 @@ import base64
 import json
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -152,10 +153,10 @@ class Session:
             # joined into this one pass (one translation, one continuous stretch of speech).
             merged = 1
             while not self.queue.empty():
-                _, more, _ = self.queue.get_nowait()
+                _, more, queued_at = self.queue.get_nowait()
                 audio = np.concatenate([audio, np.zeros(SAMPLE_RATE // 5, np.float32), more])
                 merged += 1
-            waited = self.loop.time() - queued_at
+            waited = time.monotonic() - queued_at
             cfg = dict(self.cfg)
             await self.status("transcribing", f"utterance {uid}: {len(audio)/SAMPLE_RATE:.1f}s")
 
@@ -172,8 +173,13 @@ class Session:
 
             part = [0]
 
+            speech_end = queued_at  # when the (last merged) utterance finished being spoken
+
             def on_chunk(audio, sr):
+                # "age": seconds since the speaker finished this stretch, so the browser can keep
+                # the English a steady distance behind the speaker (interpreter-style buffer).
                 self.send_threadsafe({"type": "audio", "id": uid, "part": part[0], "final": False,
+                                      "age": round(time.monotonic() - speech_end, 3),
                                       "sample_rate": sr,
                                       "wav_base64": base64.b64encode(wav_bytes(audio, sr)).decode()})
                 part[0] += 1
@@ -218,7 +224,7 @@ class Session:
     async def enqueue(self, audio: np.ndarray):
         self.last_activity = self.loop.time()
         self.next_id += 1
-        await self.queue.put((self.next_id, audio, self.loop.time()))
+        await self.queue.put((self.next_id, audio, time.monotonic()))
         await self.status("speech", f"queued utterance {self.next_id}")
 
 

@@ -80,6 +80,18 @@ because the browser still used Chatterbox (RTF ~1.5–1.8, slower than speech). 
 Measured (ws_client --realtime, 3 Italian clips back to back, Pocket 4-bit): end of speech -> first English
 0.5–0.8 s (2.2 s first sentence), TTS 0.8 s per 6 s, no queue wait.
 
+## Session 6 (2026-09-24): breaks in live use
+- Bug: Start/Reset voice sent "[object Object]" (wsSend didn't stringify) -> the voice never reset; the 15:28
+  session spoke in the voice my e2e test had locked. wsSend now stringifies; tests reset the voice at the end.
+- MLX buffer cache grew to ~7 GB in 10 min live -> full swap, MT 0.7–4.6 s, TTS 4–10 s, queue 7–13 s.
+  `mx.set_cache_limit` (LINGOSYNC_CACHE_MB, 256) keeps the server at ~1.55 GB (`mem` in the utt log).
+- Interpreter-style playback: server sends `age` (s since the speaker finished) with every audio part; the
+  browser starts each stretch at speech_end + App.lag (2.5 s start, grows on late/stall up to 8 s, eases 0.1 s).
+- Browser reports `late` / `stall` / `revived` / `context` as `client playback:` lines in the server log.
+- VAD soft cut 4.5 s / 0.3 s breath, hard 9 s. Keep-warm runs even with no page open.
+- tests/e2e_browser.py: headless Chrome with a fake mic (file) — measures gaps between played parts.
+- The Mac itself is the limit when OrbStack/Docker + IDEs fill swap (16/16.4 GB used): every stage 3–10x slower.
+
 ## Next steps
 1. Live test in Chrome: `./run.sh`, http://127.0.0.1:8765, laptop mic + earphones, consent on. Not yet done
    (needs a person and a mic). Listen to `tests/out_ws_*.wav` for voice quality.

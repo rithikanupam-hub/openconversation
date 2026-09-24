@@ -76,6 +76,7 @@
     // TTS can run slower than real time, so each new utterance waits this long before playing.
     // It grows when a sentence still stalls mid-way and shrinks slowly while playback is smooth.
     prebuffer: 0.6,
+    lag: 2.5, // seconds the English runs behind the speaker (see schedulePart)
     lastScheduledId: null,
     segmentAudio: new Map(), // id -> [AudioBuffer] in part order
 
@@ -456,13 +457,15 @@
     }
     if (!msg.wav_base64) return;
     const ctx = ensurePlaybackGraph();
+    // When the speaker finished this stretch, on the audio clock (server sends its age).
+    const sourceEnd = typeof msg.age === "number" ? ctx.currentTime - msg.age : null;
     const bytes = base64ToBytes(msg.wav_base64);
     App.decodeChain = App.decodeChain
       .then(() => ctx.decodeAudioData(bytes.buffer))
       .then((buffer) => {
         if (!App.segmentAudio.has(msg.id)) App.segmentAudio.set(msg.id, []);
         App.segmentAudio.get(msg.id)[msg.part || 0] = buffer;
-        schedulePart(msg.id, buffer, { live: true });
+        schedulePart(msg.id, buffer, { live: true, sourceEnd });
       })
       .catch((err) => console.warn("[LingoSync] audio decode failed", err));
   }
@@ -531,8 +534,12 @@
 
   const PREBUFFER_MIN = 0.5;
   const PREBUFFER_MAX = 3.0;
+  // Interpreter lag: the English runs this many seconds behind the speaker, used as a buffer so
+  // uneven processing never breaks the flow. Grows when something arrives late, eases back slowly.
+  const LAG_MIN = 1.5;
+  const LAG_MAX = 8.0;
 
-  function schedulePart(id, buffer, { live = false } = {}) {
+  function schedulePart(id, buffer, { live = false, sourceEnd = null } = {}) {
     const ctx = App.playCtx;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
@@ -540,8 +547,21 @@
     const now = ctx.currentTime;
     const newUtterance = id !== App.lastScheduledId;
     let startAt;
-    if (live && newUtterance) {
-      // Hold the first part back so later parts arrive before they are needed.
+    if (live && newUtterance && sourceEnd !== null) {
+      // Each stretch starts a fixed lag after the speaker finished it, so the English keeps a
+      // steady rhythm behind the speaker instead of stopping and starting with processing time.
+      const slot = sourceEnd + App.lag;
+      const earliest = now + 0.05;
+      if (earliest > slot && earliest > App.playHead) {
+        const late = earliest - slot;
+        App.lag = Math.min(LAG_MAX, App.lag + late + 0.5);
+        reportPlayback("late", { id, seconds: +late.toFixed(2), lag: +App.lag.toFixed(2) });
+      } else if (slot - earliest > 2.5) {
+        App.lag = Math.max(LAG_MIN, App.lag - 0.1);
+      }
+      startAt = Math.max(earliest, App.playHead, slot);
+    } else if (live && newUtterance) {
+      // Older server without "age": hold the first part back so later parts arrive in time.
       startAt = Math.max(now + App.prebuffer, App.playHead);
       App.prebuffer = Math.max(PREBUFFER_MIN, App.prebuffer - 0.1);
     } else {
@@ -549,7 +569,8 @@
         // The previous part ran out before this one arrived: an audible gap. Buffer more next time.
         const gap = now - App.playHead;
         App.prebuffer = Math.min(PREBUFFER_MAX, App.prebuffer + gap + 0.2);
-        reportPlayback("stall", { id, seconds: +gap.toFixed(2), prebuffer: +App.prebuffer.toFixed(2) });
+        App.lag = Math.min(LAG_MAX, App.lag + gap + 0.3);
+        reportPlayback("stall", { id, seconds: +gap.toFixed(2), lag: +App.lag.toFixed(2) });
       }
       // A small lead keeps a part from starting in the past while the graph wakes up.
       startAt = Math.max(now + 0.03, App.playHead);

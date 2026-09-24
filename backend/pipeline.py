@@ -441,6 +441,9 @@ class Pipeline:
 
         # Pin model memory in RAM. On a 16 GB Mac under swap, idle model buffers were paged out
         # (1.5 GB of GPU buffers swapped), making each sentence's TTS 5-8x slower than benchmarks.
+        # MLX keeps freed buffers in a cache that grew to ~7 GB in a 10-minute live session and pushed
+        # the Mac into full swap (translation 4x slower, breaks). Active memory stays ~1.3 GB.
+        mx.set_cache_limit(int(float(os.environ.get("LINGOSYNC_CACHE_MB", "256")) * 2**20))
         wired_gb = float(os.environ.get("LINGOSYNC_WIRED_GB", "4"))
         if wired_gb > 0:
             try:
@@ -518,6 +521,8 @@ class Pipeline:
             if "ms" in first:
                 timings["tts_first_ms"] = first["ms"]
             wav = None if on_chunk else wav_bytes(audio, sr)
+            import mlx.core as mx
+            timings["mem_gb"] = round((mx.get_active_memory() + mx.get_cache_memory()) / 2**30, 2)
             return Result(text, detected, target, target_lang, wav, sr, timings)
 
 
