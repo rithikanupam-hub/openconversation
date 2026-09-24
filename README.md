@@ -66,6 +66,9 @@ Environment overrides: `LINGOSYNC_ENGINE`, `LINGOSYNC_ASR` (`parakeet` or `whisp
 .venv/bin/python -m tests.e2e_browser clip.wav 60     # headless Chrome with a fake microphone
 ```
 
+Both test clips are synthetic, made with macOS text-to-speech (`say -v Alice` for Italian, the default
+voice for English); they contain no real person's voice.
+
 The browser test reports audible breaks between played parts and the server log shows one line per
 sentence (`utt N: … waited … | asr … tts … | it->en | text -> translation`).
 
