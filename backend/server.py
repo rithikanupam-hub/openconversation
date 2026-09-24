@@ -90,6 +90,25 @@ async def index():
     return FileResponse(FRONTEND / "index.html")
 
 
+@app.get("/lk")
+async def lk_page():
+    """M1 test page: joins the LiveKit room and talks to the translator agent over WebRTC."""
+    return FileResponse(FRONTEND / "lk.html")
+
+
+@app.get("/api/lk-token")
+async def lk_token(identity: str = "listener"):
+    """Dev-only access token for the local LiveKit server (livekit-server --dev keys)."""
+    from livekit import api
+
+    room = os.environ.get("OC_ROOM", "openconversation")
+    token = (api.AccessToken(os.environ.get("LIVEKIT_API_KEY", "devkey"), os.environ.get("LIVEKIT_API_SECRET", "secret"))
+             .with_identity(identity).with_name(identity)
+             .with_grants(api.VideoGrants(room_join=True, room=room, can_publish=True, can_subscribe=True,
+                                          can_publish_data=True)).to_jwt())
+    return {"url": os.environ.get("LIVEKIT_PUBLIC_URL", "ws://127.0.0.1:7880"), "token": token, "room": room}
+
+
 @app.get("/api/health")
 async def health():
     return {"ok": True, "models_ready": warm["ready"], "error": warm["error"],

@@ -3,6 +3,18 @@
 All v1 work happened between 2026-09-22 and 2026-09-24 on a 16 GB M4 MacBook.
 Numbers are measured, not estimated.
 
+## v2 M1: translator agent over WebRTC (2026-09-25)
+- `backend/lk_agent.py`: the pipeline runs as a LiveKit participant ("translator"). It subscribes to each
+  person's microphone track and publishes a translated audio track; transcripts and voice state go over
+  the data channel; the interpreter lag moved from the browser into the agent.
+- `frontend/lk.html` test page (`/lk`), `/api/lk-token` (dev keys), `run_lk.sh` (LiveKit server + web + agent).
+- `tests/e2e_lk.py`: headless Chrome with a fake mic; reads WebRTC receive statistics.
+- Measured on the 43 s Italian/English clip: 9 Italian stretches translated and spoken, English left silent,
+  voice locked once, no queueing (wait 0.0 s), steady 2.0 s lag never had to grow; WebRTC jitter 1 ms,
+  jitter buffer 77 ms, 0.16 s of audible concealment in 4 events over 59 s. Bitrate 84 kbps (target ≤ 64, for M2).
+- Known: WebRTC's mic processing changes levels, so the energy VAD sometimes cuts mid-sentence
+  ("…parliamo della." / "per il prossimo…"); M2 moves speech detection to Silero VAD on the device.
+
 ## v1.0: local prototype (2026-09-24)
 
 ### Continuous flow

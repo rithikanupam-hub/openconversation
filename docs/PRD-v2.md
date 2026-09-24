@@ -59,7 +59,7 @@ Google Meet, or on a phone.
 
 | M | Deliverable | Done when |
 |---|---|---|
-| M1 | Server agent on the Mac (LiveKit + current pipeline) | A browser test page hears Italian and plays English in the cloned voice over WebRTC |
+| M1 ✅ | Server agent on the Mac (LiveKit + current pipeline) | A browser test page hears Italian and plays English in the cloned voice over WebRTC (done 2026-09-25, see CHANGELOG) |
 | M2 | Lean web client (orange UI on LiveKit) | NFR1–NFR4 met on a laptop and on a phone browser |
 | M3 | Voice store + pluggable voice engine (Voicebox backend as first candidate) | Switching Pocket / Voicebox engines / MiniMax is one setting; FR3, FR4, FR8 met |
 | M4 | Chrome extension for Google Meet | Hear other Meet participants translated in their voices |

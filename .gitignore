@@ -6,3 +6,4 @@ tests/*.aiff
 certs/
 data/
 frontend/_e2e_clip.wav
+logs/

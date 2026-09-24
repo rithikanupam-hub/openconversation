@@ -36,6 +36,17 @@ Use Chrome or Edge on the Mac (the earphone picker uses `setSinkId`).
 In the app: choose the microphone and your earphones in **settings**, switch on **consent** and
 **clone voice**, and press the orange button.
 
+### v2 preview (M1): over WebRTC with LiveKit
+
+```sh
+brew install livekit        # once
+./run_lk.sh                 # LiveKit server + translator agent + web server
+# open http://127.0.0.1:8765/lk
+```
+
+The translator joins the LiveKit room like a call participant, listens to your microphone track and
+speaks the translation back as its own audio track. Logs go to `logs/`. See [Architecture](docs/ARCHITECTURE.md).
+
 ## Voice engines
 
 | id | clones voice | output | notes |
