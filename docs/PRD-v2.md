@@ -61,14 +61,16 @@ Google Meet, or on a phone.
 |---|---|---|
 | M1 | Server agent on the Mac (LiveKit + current pipeline) | A browser test page hears Italian and plays English in the cloned voice over WebRTC |
 | M2 | Lean web client (orange UI on LiveKit) | NFR1–NFR4 met on a laptop and on a phone browser |
-| M3 | Voice store + pluggable voice engine | Switching Pocket / Chatterbox / MiniMax is one setting; FR3, FR4, FR8 met |
+| M3 | Voice store + pluggable voice engine (Voicebox backend as first candidate) | Switching Pocket / Voicebox engines / MiniMax is one setting; FR3, FR4, FR8 met |
 | M4 | Chrome extension for Google Meet | Hear other Meet participants translated in their voices |
 | M5 | Mobile app (React Native or Flutter LiveKit SDK) | Face-to-face two-way on two phones |
 | M6 | Cloud deployment (GPU server) | Runs without the Mac; cost per conversation-minute measured |
 
 ## Open questions
 
-1. Voice engine: self-hosted GPU model (Chatterbox, CosyVoice) vs MiniMax API. This decides quality, cost per minute and data flow.
+1. Voice engine: self-hosted via [Voicebox](https://github.com/jamiepine/voicebox) (Chatterbox Multilingual,
+   Qwen3-TTS, LuxTTS; runs on Mac and CUDA; multi-sample voice profiles) vs MiniMax API. Decides quality,
+   cost per minute and data flow. Benchmark both against the NFR3/NFR5 targets.
 2. Cloud provider and region for the GPU server (EU for EU speakers' data?).
 3. Translation engine: better than Argos for spoken language (NLLB, an LLM).
 4. Consent flow for the *other* person in Meet and face-to-face (they must agree to be cloned).

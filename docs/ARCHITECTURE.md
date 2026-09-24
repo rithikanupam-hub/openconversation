@@ -88,3 +88,20 @@ platform); a Python Agents framework made for speech-in / speech-out pipelines.
 | Hand-built interpreter lag and gapless scheduler | WebRTC jitter buffer; pacing moves to the agent |
 | Voice profile (`data/voice.wav`) | Voice store per speaker with consent record and retention |
 | Orange device UI | Kept; rebuilt on the LiveKit client |
+
+### Voicebox as the voice layer (candidate for M3)
+
+[Voicebox](https://github.com/jamiepine/voicebox) (Jamie Pine, MIT) is a local-first voice studio with a
+FastAPI backend and a REST API (`/generate`, `/transcribe`, `/profiles`). It fits v2 as the **voice engine
+and voice-profile store** behind the translator agent, not as the transport or the real-time loop:
+
+| Voicebox gives us | Why it matters for v2 |
+|---|---|
+| Seven voice engines behind one API: Qwen3-TTS, Chatterbox Multilingual (23 languages), Chatterbox Turbo, LuxTTS, TADA, Kokoro, Qwen CustomVoice | One switch between engines; **Chatterbox Multilingual speaks Italian**, needed for two-way |
+| MLX on Apple Silicon **and** PyTorch CUDA/ROCm on Linux | The same voice layer runs on the Mac now and on a cloud GPU later (our `mlx-audio` code is Mac-only) |
+| Voice profiles from **several samples**, import/export | Better clones than our single 6–12 s reference; a ready profile store |
+| LuxTTS, advertised as ~150× real time on CPU | A lean option for a cheap server; to be benchmarked for clone quality |
+
+Gaps to cover ourselves: its generation is an async queue, not a streaming real-time API (streaming is on its
+roadmap), so the agent keeps the pacing, sentence splitting and interpreter lag; and its own Whisper
+transcription is slower than Parakeet for our use.

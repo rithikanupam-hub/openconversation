@@ -3,7 +3,7 @@
 Status: **built and tested, superseded by [PRD v2](PRD-v2.md)**
 Period: 2026-09-22 to 2026-09-24
 Note: there was no written PRD at the start. This document records the v1 intent as built
-(first commit `f5e5c30`) and what testing showed.
+(first commit `5f838f9`) and what testing showed.
 
 ## Problem
 
