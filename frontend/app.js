@@ -221,7 +221,10 @@
 
   function wsSend(payload) {
     if (App.ws && App.ws.readyState === WebSocket.OPEN) {
-      App.ws.send(payload);
+      // Plain objects are control messages: they must go as JSON text (an object would be sent
+      // as "[object Object]" and ignored, which silently broke Start/Reset voice before).
+      const isBinary = payload instanceof ArrayBuffer || ArrayBuffer.isView(payload);
+      App.ws.send(typeof payload === "string" || isBinary ? payload : JSON.stringify(payload));
       return true;
     }
     return false;
@@ -504,6 +507,21 @@
         App.playDest.connect(App.playCtx.destination);
       }
       applyVolumeAndMute();
+      App.playCtx.onstatechange = () => reportPlayback("context", { state: App.playCtx.state });
+      // Watchdog: Chrome can pause the output (Bluetooth reconnect, device switch, tab audio
+      // policy). A paused output looks like the translation "got stuck", so revive it.
+      setInterval(() => {
+        const busy = App.isListening || App.playHead > App.playCtx.currentTime;
+        if (!busy) return;
+        if (App.playCtx.state === "suspended") {
+          App.playCtx.resume().catch(() => {});
+          reportPlayback("revived", { what: "audio context" });
+        }
+        if (supportsSetSinkId() && el.playbackAudio.paused) {
+          el.playbackAudio.play().catch(() => {});
+          reportPlayback("revived", { what: "output element" });
+        }
+      }, 2000);
     }
     // Both need a user gesture the first time; startCapture/replay provide one.
     if (App.playCtx.state === "suspended") App.playCtx.resume().catch(() => {});
@@ -529,7 +547,9 @@
     } else {
       if (live && now > App.playHead) {
         // The previous part ran out before this one arrived: an audible gap. Buffer more next time.
-        App.prebuffer = Math.min(PREBUFFER_MAX, App.prebuffer + (now - App.playHead) + 0.2);
+        const gap = now - App.playHead;
+        App.prebuffer = Math.min(PREBUFFER_MAX, App.prebuffer + gap + 0.2);
+        reportPlayback("stall", { id, seconds: +gap.toFixed(2), prebuffer: +App.prebuffer.toFixed(2) });
       }
       // A small lead keeps a part from starting in the past while the graph wakes up.
       startAt = Math.max(now + 0.03, App.playHead);
@@ -546,6 +566,10 @@
       App.playingCount.set(id, left);
       if (left <= 0) setCardPlaying(id, false);
     };
+  }
+
+  function reportPlayback(event, details) {
+    wsSend({ type: "playback", event, ...details });
   }
 
   function replaySegment(id) {

@@ -101,6 +101,9 @@ async def main():
             await ev("document.getElementById('startStopBtn').click()")
             await asyncio.sleep(1)
             data = (await ev("JSON.stringify(window.__e2e)"))["result"]["value"]
+            # never leave the test clip's voice locked for the real user
+            await ev("document.getElementById('resetVoiceBtn').click()")
+            await asyncio.sleep(0.5)
             errs = await ev("JSON.stringify([...document.querySelectorAll('.toast')].map(t=>t.textContent))")
             print("toasts:", errs["result"]["value"])
             return json.loads(data)

@@ -66,15 +66,16 @@ CLIENTS: set = set()
 
 @app.on_event("startup")
 async def _keep_warm():
-    """Every 20 s while a page is connected and idle, touch every model (see Pipeline.keep_warm)."""
+    """Every 20 s while idle, touch every model (see Pipeline.keep_warm)."""
     async def loop():
         while True:
             await asyncio.sleep(20)
-            if not CLIENTS or not warm["ready"]:
+            if not warm["ready"]:
                 continue
+            # Also while no page is open: after a night idle the first sentence waited 9.9 s.
             if any(not c.queue.empty() or asyncio.get_event_loop().time() - c.last_activity < 20 for c in CLIENTS):
                 continue
-            engine = next(iter(CLIENTS)).cfg["engine"]
+            engine = next(iter(CLIENTS)).cfg["engine"] if CLIENTS else DEFAULT_ENGINE
             try:
                 await asyncio.get_event_loop().run_in_executor(executor, pipeline.keep_warm, engine)
             except Exception:  # noqa: BLE001
@@ -262,6 +263,9 @@ async def ws_endpoint(ws: WebSocket):
                 elif t == "reset_voice":
                     s.profile.clear()
                     await s.send(s.profile.state())
+                elif t == "playback":
+                    # Browser-side playback report (stalls, recoveries): the server can't see these.
+                    log.info("client playback: %s", {k: v for k, v in m.items() if k != "type"})
                 elif t == "ping":
                     await s.send({"type": "pong"})
     except WebSocketDisconnect:

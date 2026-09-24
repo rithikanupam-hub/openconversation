@@ -77,6 +77,7 @@ async def main():
                 await asyncio.sleep(pace)
         await asyncio.wait_for(done.wait(), timeout=600)
         rtask.cancel()
+        await ws.send(json.dumps({"type": "reset_voice"}))  # never leave the test voice locked
 
 
 asyncio.run(main())

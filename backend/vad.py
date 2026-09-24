@@ -25,11 +25,12 @@ class Segmenter:
     min_speech: float = 0.35
     end_silence: float = 0.5
     pre_roll: float = 0.3
-    max_utterance: float = 8.0
+    max_utterance: float = 9.0
     # Continuous flow: once an utterance is this long, a short breath (soft_silence) is enough
-    # to close it, so translation starts while the speaker is still talking.
-    soft_after: float = 3.0
-    soft_silence: float = 0.2
+    # to close it, so translation starts while the speaker is still talking. 3 s / 0.2 s chopped
+    # numbers and phrases apart in a live test ("Vinticinquecinquanta" -> "Fifty-fifty").
+    soft_after: float = 4.5
+    soft_silence: float = 0.3
     # thresholds relative to the adaptive noise floor
     start_ratio: float = 3.0
     keep_ratio: float = 1.8
