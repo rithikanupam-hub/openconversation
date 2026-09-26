@@ -15,3 +15,4 @@ tests/voice_eval/index.html
 tests/voice_eval/scores.json
 tests/voice_eval/run.log
 research_notes/
+.claude/settings.local.json
