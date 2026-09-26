@@ -22,6 +22,8 @@ MODELS = {  # key: (repo, languages it can speak, how to call it)
     "chatterbox_turbo": ("mlx-community/chatterbox-turbo-4bit", ["en"], "cb_turbo"),
     "chatterbox_multi": ("mlx-community/chatterbox-multilingual-v3", ["en", "it"], "cb_multi"),
     "qwen3_0.6b": ("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", ["en", "it"], "qwen"),
+    "qwen3_0.6b_8bit": ("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit", ["en", "it"], "qwen"),
+    "qwen3_0.6b_4bit": ("mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit", ["en", "it"], "qwen"),
     "qwen3_1.7b": ("mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16", ["en", "it"], "qwen"),
     "voxcpm2": ("mlx-community/VoxCPM2-4bit", ["en", "it"], "voxcpm"),
 }

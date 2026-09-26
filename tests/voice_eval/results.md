@@ -10,5 +10,7 @@ Anchors (same WavLM similarity scale):
 | chatterbox_turbo | 0.93 | – | 0.10 | 1.27 | 1.76 GB | no |
 | chatterbox_multi | 0.96 | 0.97 | 0.10 | 4.70 | 4.39 GB | yes |
 | qwen3_0.6b | 0.97 | 0.97 | 0.04 | 3.43 | 5.91 GB | yes |
+| qwen3_0.6b_8bit | 0.97 | 0.98 | 0.10 | 1.79 | 5.33 GB | yes |
+| qwen3_0.6b_4bit | 0.97 | 0.97 | 0.09 | 1.82 | 5.21 GB | yes |
 | qwen3_1.7b | 0.96 | 0.96 | 0.09 | 10.39 | 7.57 GB | yes |
 | voxcpm2 | 0.97 | 0.96 | 0.06 | 5.46 | 4.77 GB | yes |

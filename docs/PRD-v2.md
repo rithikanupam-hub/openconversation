@@ -42,6 +42,9 @@ Google Meet, or on a phone.
 | FR6 | Two-way: each participant hears everyone else in their chosen language |
 | FR7 | Same backend for web app, Chrome extension and mobile app |
 | FR8 | Delete a speaker's voice fingerprint and audio on request and at the end of a conversation (unless the user chooses to keep it) |
+| FR9 | **Team voice library**: colleagues enrol once (15–30 s, with consent); in a meeting each sentence is matched to the closest stored voice fingerprint and spoken in *that* person's cloned voice (five people in a room = five voices). Unknown voices can be enrolled on the spot with consent. Overlapping speech: voice the dominant speaker (separation is later work) |
+| FR10 | **Multiple teams at once**: each meeting is its own room with its own agent, voice state and voice library; nothing is shared between organisations |
+| FR11 | **Cloud edition with trial and paywall**: anyone can start a session in the browser; the first 5 minutes are free, then a subscription or per-hour credits (Stripe) |
 
 ## Non-functional requirements (targets)
 
@@ -65,6 +68,23 @@ Google Meet, or on a phone.
 | M4 | Chrome extension for Google Meet | Hear other Meet participants translated in their voices |
 | M5 | Mobile app (React Native or Flutter LiveKit SDK) | Face-to-face two-way on two phones |
 | M6 | Cloud deployment (GPU server) | Runs without the Mac; cost per conversation-minute measured |
+
+## Editions
+
+| | Local edition | Cloud edition |
+|---|---|---|
+| Runs on | the user's Mac (MLX) | our servers: LiveKit + agents on small CPU servers, voice and ASR on GPU servers (AWS eu-central-1) |
+| Voice model | Pocket TTS for live speech (Qwen3-TTS is 1.8× slower than real time on a 16 GB M4 even at 8-bit) | **Qwen3-TTS 0.6B** (chosen 2026-09-26: best similarity 0.97–0.985, best clarity, natural expressiveness, cheapest of the high-quality open models; see `tests/voice_eval`) |
+| Speech + translation | Parakeet + Argos, local | Soniox API at launch; Parakeet on the GPU once it is busy enough |
+| Cost to us | none | GPU hours + Soniox per use; GPU on only during active hours until paying users cover 24/7 |
+
+## Scaling (why v2, not the prototype)
+
+The prototype serves one conversation: one voice profile per server and one processing lane. v2 scales
+by giving each meeting its own LiveKit room and agent job, a shared pool of GPU workers behind the agents
+(add workers as usage grows), and a per-organisation voice library (fingerprint, clone sample, consent
+record, deletion) in a database. The key capacity number, users per GPU for Qwen3-TTS, is measured in the
+AWS GPU test before pricing the paywall.
 
 ## Open questions
 
