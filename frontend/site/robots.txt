@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+# Add: Sitemap: https://<production-domain>/sitemap.xml once the domain is set.

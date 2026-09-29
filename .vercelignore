@@ -1,0 +1,8 @@
+/*
+!/frontend
+/frontend/*
+!/frontend/site
+!/scripts
+!/package.json
+!/package-lock.json
+!/vercel.json

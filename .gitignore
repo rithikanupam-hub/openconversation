@@ -16,3 +16,12 @@ tests/voice_eval/scores.json
 tests/voice_eval/run.log
 research_notes/
 .claude/settings.local.json
+node_modules/
+dist/
+.vercel/
+.env.*
+!.env.example
+supabase/.temp/
+.DS_Store
+frontend/site/account.js
+.vercel

@@ -1,0 +1,27 @@
+// Run: node tests/site/check.cjs (no browser, models or network required).
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {assessFit} = require('../../frontend/site/site.js');
+const check = data => assessFit({language:'it-en', platform:'room', frequency:'weekly', ...data});
+assert.match(check({}).description, /not a readiness guarantee/);
+assert.match(check({language:'en-it'}).description, /needs evaluation/);
+assert.match(check({language:'other', platform:'meet'}).title, /language first/);
+assert.match(check({platform:'group'}).description, /still planned/);
+for (const language of ['de-en','fr-en','en-de','en-fr','es-en']) assert.match(check({language}).description, /needs evaluation/);
+for (const platform of ['meet','teams','zoom']) assert.match(check({platform}).description, /integration is still being developed/);
+assert.match(check({frequency:'once'}).description, /not a confirmed service booking/);
+const site = path.resolve(__dirname,'../../frontend/site');
+const html = fs.readFileSync(path.join(site,'index.html'),'utf8');
+for (const [, resource] of html.matchAll(/(?:src|poster|href)="((?:assets\/|site\.)[^"#]+)"/g)) assert(fs.statSync(path.join(site,resource.split("?")[0])).size > 0,resource);
+for (const [, id] of html.matchAll(/href="#([^" ]+)"/g)) assert(html.includes(`id="${id}"`),`Broken anchor ${id}`);
+assert(!html.includes('getUserMedia') && !html.includes('/config.js'), 'Marketing must not start the interpreter');
+assert(html.includes('not a live translation recording'));
+for (const tag of ['og:title','og:image','twitter:card','application/ld+json','rel="manifest"','name="description"']) assert(html.includes(tag), `Missing SEO tag ${tag}`);
+assert.equal((html.match(/<h1[\s>]/g) || []).length, 1, 'Exactly one h1');
+const js = fs.readFileSync(path.join(site,'site.js'),'utf8');
+for (const language of ['Italiano','Deutsch','Français','Svenska','Dansk','Español','Nederlands','Português']) assert(js.includes(`['${language}', 'English'`), `Hero cycle missing ${language} → English`);
+assert(js.includes("['English', 'Italiano'"), 'Hero cycle missing English → Italiano');
+assert(html.includes('Tested today: Italian → English'), 'Hero must label which pair is tested');
+for (const file of ['robots.txt','site.webmanifest','assets/og-image.jpg','assets/apple-touch-icon.png']) assert(fs.statSync(path.join(site,file)).size > 0, file);
+console.log('PASS: SEO tags, language cycle, fit eligibility, unsupported integrations, local assets, anchors and no interpreter startup.');
