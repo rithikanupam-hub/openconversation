@@ -1,0 +1,20 @@
+project_id = "vocalgrid"
+[auth]
+enabled = true
+site_url = "https://vocalgrid.vercel.app/account"
+additional_redirect_urls = ["https://vocalgrid.vercel.app/account", "https://vocalgrid.vercel.app/account.html", "https://vocalgrid.com/account", "https://vocalgrid.com/account.html", "http://127.0.0.1:4173/account.html"]
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_refresh_token_rotation = true
+minimum_password_length = 10
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+secure_password_change = true
+max_frequency = "60s"
+otp_expiry = 3600
+otp_length = 8
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

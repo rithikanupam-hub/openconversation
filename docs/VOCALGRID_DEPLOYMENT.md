@@ -35,3 +35,21 @@ customer-facing website/app labels, film and metadata are VocalGrid.
 Checks: `npm test`, `node tests/site/check-build.mjs`.
 Policy drafts remain drafts pending operator/contact/retention decisions. No paid billing,
 recording storage or public domain purchase is implemented by this change.
+
+## Connected on 29 September 2026
+
+- Website: https://vocalgrid.vercel.app (Vercel project `vocalgrid`).
+- Supabase: `peejgnwzxqjjhetdhudu`, Frankfurt, nano; no plan upgrade requested.
+- Account migration applied; exact account redirect URLs configured. Email confirmations,
+  refresh token rotation and existing TOTP capabilities enabled.
+- Production environment contains only the public project URL and publishable key.
+- Live test passed: magic-link token verification without sending email, save/read/delete,
+  cross-user read/update/delete denial, forged owner insert denial, anonymous denial, sign-out.
+  Disposable users were removed. Run `node tests/site/check-live-account.mjs` only with the
+  ignored, local `.env.supabase-keys.json` file; it is never deployed or committed.
+- Public email signup still needs SMTP. No real inbox-delivery test has been performed.
+- Git branch: `codex/vocalgrid-deploy`. Automatic Vercel Git connection needs the owner to
+  connect GitHub at https://vercel.com/account/settings/authentication.
+- Chosen domain: `vocalgrid.com`. Domain ownership/DNS must be verified before setting
+  PUBLIC_SITE_URL and making that origin the primary authentication site URL.
+- Speech backend remains separate and unauthenticated by this website account system.

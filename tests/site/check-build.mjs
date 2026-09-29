@@ -13,4 +13,7 @@ assert(sql.includes('enable row level security'));
 for(const action of ['select','insert','update','delete'])assert(sql.includes(`for ${action} to authenticated`));
 assert(sql.includes('with check ((select auth.uid())=user_id)'));
 assert(sql.includes('references auth.users(id) on delete cascade'));
+execFileSync(process.execPath,['scripts/build-web.mjs'],{env:{...process.env,PUBLIC_SUPABASE_URL:'',PUBLIC_SUPABASE_PUBLISHABLE_KEY:'',PUBLIC_SITE_URL:'https://vocalgrid.com'},stdio:'pipe'});
+for(const lang of ['en','it','de','fr']){const route=lang==='en'?'':lang+'/';const html=readFileSync('dist/'+route+'index.html','utf8');assert(html.includes('rel="canonical" href="https://vocalgrid.com/'+route+'"'));}
+execFileSync(process.execPath,['scripts/build-web.mjs'],{env:{...process.env,PUBLIC_SUPABASE_URL:'',PUBLIC_SUPABASE_PUBLISHABLE_KEY:'',PUBLIC_SITE_URL:''},stdio:'pipe'});
 console.log('PASS: privileged key rejection, public-only output, account bundle, RLS migration contract. Live isolation still requires a database test.');

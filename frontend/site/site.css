@@ -558,3 +558,5 @@ dialog .btn{margin:8px 0 18px}
 /* Darker readable text; the device's decorative orange remains unchanged. */
 :root{--dim:#626659;--orange-deep:#a73b18}em{color:#b33e18}:focus-visible{outline-color:#24665f}
 .account-form{display:grid;gap:20px;max-width:520px;margin:24px 0}.account-form label{display:grid;gap:8px;font-size:14px}.account-form input,.account-form select{width:100%;padding:13px;border:1px solid #8c9083;border-radius:5px;background:var(--paper);color:var(--ink);font:inherit}.account-form .btn{justify-self:start}.account-form button:disabled{opacity:.6;cursor:wait}.account-heading{display:flex;justify-content:space-between;align-items:start;gap:20px}.saved-profiles{list-style:none;padding:0;margin:24px 0}.saved-profiles li{padding:20px 0;border-bottom:1px solid var(--line)}.saved-profiles .text-btn{text-decoration:underline}.trust-page [hidden]{display:none!important}
+
+.nav-pill > a.mono{white-space:nowrap}
