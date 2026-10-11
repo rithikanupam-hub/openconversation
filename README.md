@@ -79,3 +79,7 @@ sentence (`utt N: … waited … | asr … tts … | it->en | text -> translatio
 - `backend/vad.py`: energy-based utterance segmenter
 - `frontend/`: static web app (`app.js` logic, `ui.js` device UI), no build step
 - `docs/`: PRDs and architecture
+
+## Cloud translator candidate
+
+The reviewed cloud runtime and model-free checks are documented in [cloud/README.md](cloud/README.md). [Public-audio comparison](research/2026-10-11/RESULTS.md): all ten runs completed, but translation text was identical across versions. This source publication is not a production promotion.

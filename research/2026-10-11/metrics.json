@@ -1,0 +1,536 @@
+{
+  "baseline": [
+    {
+      "clip": "20180529-0900-PLENARY-23-it_20180529-21:12:43_3",
+      "split": "development",
+      "input_s": 19.2199375,
+      "reference_it": "Sofferenze e disagio delle vittime, che per certi versi ancora alcuni Stati faticano a riconoscere nei propri codici penali, ne abbiamo discusso anche poco fa, per quanto riguarda il tema dello stalking un reato che non è riconosciuto in tutti gli Stati membri all'interno dell'Unione.",
+      "recognized_paired_it": "Senze e disagio delle vittime che, per certi versi, ancora alcuni Stati faticano a riconoscere nei propri codici penali. Ne abbiamo discusso anche poco fa per quanto riguarda il tema dello stalking: un reato che non è riconosciuto in tutti gli Stati membri all'interno dell'Unione.",
+      "translated_en": "Without the suffering and discomfort of the victims who, in some ways, some states still struggle to recognize in their own criminal codes. We also discussed it a little while ago regarding the topic of stalking: a crime that is not recognized in all the member states within the Union.",
+      "reference_token_edit_distance": 1,
+      "reference_words": 47,
+      "translated_phrases": 9,
+      "voiced_phrases": 9,
+      "first_audio_receipt_s": 4.629622582986485,
+      "modeled_completion_after_input_s": 3.91154641666931,
+      "max_modeled_queue_s": 1.9147277503547606,
+      "phrases": {
+        "1": {
+          "receipt": 4.629622582986485,
+          "server_age_s": 2.389,
+          "modeled_start_s": 4.629622582986485
+        },
+        "2": {
+          "receipt": 7.166069625003729,
+          "server_age_s": 4.081,
+          "modeled_start_s": 8.057039249653155
+        },
+        "3": {
+          "receipt": 9.318692250002641,
+          "server_age_s": 3.413,
+          "modeled_start_s": 9.318692250002641
+        },
+        "4": {
+          "receipt": 10.520984124974348,
+          "server_age_s": 2.902,
+          "modeled_start_s": 11.921358916669307
+        },
+        "5": {
+          "receipt": 13.10810675000539,
+          "server_age_s": 3.287,
+          "modeled_start_s": 13.414692250002641
+        },
+        "6": {
+          "receipt": 14.947778416972142,
+          "server_age_s": 2.148,
+          "modeled_start_s": 15.676025583335974
+        },
+        "7": {
+          "receipt": 17.30479954200564,
+          "server_age_s": 2.143,
+          "modeled_start_s": 17.916025583335976
+        },
+        "8": {
+          "receipt": 19.73845554201398,
+          "server_age_s": 2.056,
+          "modeled_start_s": 20.340317250002645
+        },
+        "9": {
+          "receipt": 21.30765379202785,
+          "server_age_s": 1.322,
+          "modeled_start_s": 22.10748391666931
+        }
+      }
+    },
+    {
+      "clip": "20131120-0900-PLENARY-3-it_20131120-09:24:52_5",
+      "split": "development",
+      "input_s": 17.53875,
+      "reference_it": "Desidero sottolineare che, nell'ultima fase, siamo riusciti a imporre al Consiglio di negoziare anche quei temi legati all'accordo sulle Prospettive finanziarie, temi che i capi di Stato e di governo avevano, in maniera arbitraria, inserito nella famosa negotiation box",
+      "recognized_paired_it": "Voglio sottolineare che nell'ultima fase siamo riusciti a imporre al Consiglio di negoziare anche quei temi legati all'accordo sulle prospettive finanziarie, quei temi che i capi di Stato e di governo avevano in maniera arbitraria, inserito nella famosa \"negoziazione box\".",
+      "translated_en": "I want to emphasize that in the final phase we managed to impose on the Council to negotiate those issues as well related to the financial outlook agreement, those issues that the heads of state and government had arbitrarily included in the famous \"negotiazione box.\"",
+      "reference_token_edit_distance": 3,
+      "reference_words": 41,
+      "translated_phrases": 7,
+      "voiced_phrases": 7,
+      "first_audio_receipt_s": 4.817950083001051,
+      "modeled_completion_after_input_s": 5.022914458661962,
+      "max_modeled_queue_s": 2.000583541329334,
+      "phrases": {
+        "1": {
+          "receipt": 4.817950083001051,
+          "server_age_s": 2.265,
+          "modeled_start_s": 4.817950083001051
+        },
+        "2": {
+          "receipt": 6.956065917038359,
+          "server_age_s": 2.255,
+          "modeled_start_s": 7.937950083001054
+        },
+        "3": {
+          "receipt": 9.86543145799078,
+          "server_age_s": 2.284,
+          "modeled_start_s": 9.86543145799078
+        },
+        "4": {
+          "receipt": 12.443662707984913,
+          "server_age_s": 2.267,
+          "modeled_start_s": 12.682760666675092
+        },
+        "5": {
+          "receipt": 14.752654083014932,
+          "server_age_s": 2.095,
+          "modeled_start_s": 15.03030233334176
+        },
+        "6": {
+          "receipt": 17.575416082981974,
+          "server_age_s": 2.963,
+          "modeled_start_s": 17.99030233334176
+        },
+        "7": {
+          "receipt": 20.022997791995294,
+          "server_age_s": 2.155,
+          "modeled_start_s": 20.022997791995294
+        }
+      }
+    },
+    {
+      "clip": "20160622-0900-PLENARY-20-it_20160622-22:00:57_4",
+      "split": "development",
+      "input_s": 15.2,
+      "reference_it": "Ho voluto prendere la parola questa sera perché le istituzioni tutte hanno il dovere di accendere i riflettori su questo fenomeno orribile e vergognoso, perché non sia solo oggetto di studi e approfondimenti, ma soprattutto oggetto di politiche di prevenzione e di contrasto.",
+      "recognized_paired_it": "A questa sera, perché le istituzioni tutte hanno il dovere di accendere i riflettori su questo fenomeno orribile e vergognoso, perché non sia solo oggetto di studi e approfondimenti, ma soprattutto oggetto di politiche di prevenzione e di contrasto.",
+      "translated_en": "Tonight, because all institutions have the duty to shine the spotlight on this horrible, shameful phenomenon, so that it is not only the subject of studies and in-depth examinations, but above all the subject of prevention policies and countermeasures. We must.",
+      "reference_token_edit_distance": 5,
+      "reference_words": 43,
+      "translated_phrases": 5,
+      "voiced_phrases": 5,
+      "first_audio_receipt_s": 6.1351389170158654,
+      "modeled_completion_after_input_s": 6.866036999669081,
+      "max_modeled_queue_s": 2.692206125014934,
+      "phrases": {
+        "1": {
+          "receipt": 6.1351389170158654,
+          "server_age_s": 5.208,
+          "modeled_start_s": 6.1351389170158654
+        },
+        "2": {
+          "receipt": 9.574697458010633,
+          "server_age_s": 2.226,
+          "modeled_start_s": 9.574697458010633
+        },
+        "3": {
+          "receipt": 12.477510957978666,
+          "server_age_s": 2.241,
+          "modeled_start_s": 13.094697458010636
+        },
+        "4": {
+          "receipt": 17.671370333002415,
+          "server_age_s": 4.694,
+          "modeled_start_s": 17.671370333002415
+        },
+        "5": {
+          "receipt": 18.34194191696588,
+          "server_age_s": 2.18,
+          "modeled_start_s": 20.97803699966908
+        }
+      }
+    },
+    {
+      "clip": "20171003-0900-PLENARY-14-it_20171003-19:06:43_2",
+      "split": "holdout",
+      "input_s": 17.1379375,
+      "reference_it": "L'obiettivo europeo di ridurre del 40 le emissioni entro il 2030 passa attraverso impegni trasversali a tutti i settori dell'economia e a tutti i livelli istituzionali, dagli Stati alle comunità locali.",
+      "recognized_paired_it": "L'obiettivo europeo di ridurre del 40% le emissioni entro il 2030 passa attraverso impegni trasversali a tutti i settori dell'economia, e a tutti i livelli istituzionali, dagli Stati alle comunità locali.",
+      "translated_en": "The European goal of cutting by 40% emissions by 2030 requires cross-cutting commitments across all sectors of the economy, and at all institutional levels, from the states to local communities.",
+      "reference_token_edit_distance": 0,
+      "reference_words": 33,
+      "translated_phrases": 5,
+      "voiced_phrases": 5,
+      "first_audio_receipt_s": 4.962346040992998,
+      "modeled_completion_after_input_s": 5.066010291654312,
+      "max_modeled_queue_s": 2.2208575419825536,
+      "phrases": {
+        "1": {
+          "receipt": 4.962346040992998,
+          "server_age_s": 2.3,
+          "modeled_start_s": 4.962346040992998
+        },
+        "2": {
+          "receipt": 7.666321915981825,
+          "server_age_s": 2.238,
+          "modeled_start_s": 8.038491374336962
+        },
+        "3": {
+          "receipt": 12.36978112498764,
+          "server_age_s": 2.295,
+          "modeled_start_s": 12.36978112498764
+        },
+        "4": {
+          "receipt": 16.14946562499972,
+          "server_age_s": 2.056,
+          "modeled_start_s": 16.278031124987642
+        },
+        "5": {
+          "receipt": 19.237903082976118,
+          "server_age_s": 1.865,
+          "modeled_start_s": 19.793281124987644
+        }
+      }
+    },
+    {
+      "clip": "20170517-0900-PLENARY-19-it_20170517-19:55:39_0",
+      "split": "holdout",
+      "input_s": 25.62,
+      "reference_it": "Signor Presidente, onorevoli colleghi, la partita del trasporto, in particolare del trasporto su strada, sarà una delle più interessanti per verificare la capacità di innovazione dell'Unione europea. Abbiamo parlato con dovizia di particolari di tutte le sfide legate ai nuovi carburanti, alla necessità di limitare le emissioni",
+      "recognized_paired_it": "Σας ευχαριστώ. Τον λόγο έχει για 1, 5 λεπτό ο κύριος Σαλίνης. Grazie, Presidente. La partita del trasporto, in particolare del trasporto su strada, sarà una di quelle più interessanti per verificare la capacità di innovazione dell'Unione Europea. Abbiamo parlato con dovizia di particolari di tutte le sfide legate ai nuovi carburanti.",
+      "translated_en": "Thank you. He has the floor for 1.5 minutes Mr. Salinis. Thank you, Mr. President. The transport sector, in particular, road transport, will be one of those most interesting ways to assess the ability of the European Union to innovate. We discussed plenty of details about all the challenges related to new fuels.",
+      "reference_token_edit_distance": 22,
+      "reference_words": 48,
+      "translated_phrases": 10,
+      "voiced_phrases": 10,
+      "first_audio_receipt_s": 4.071154874982312,
+      "modeled_completion_after_input_s": 4.553920666672912,
+      "max_modeled_queue_s": 2.219697792006194,
+      "phrases": {
+        "1": {
+          "receipt": 4.071154874982312,
+          "server_age_s": 2.298,
+          "modeled_start_s": 4.071154874982312
+        },
+        "2": {
+          "receipt": 5.107394916005433,
+          "server_age_s": 2.217,
+          "modeled_start_s": 5.107394916005433
+        },
+        "3": {
+          "receipt": 7.822923165978864,
+          "server_age_s": 3.722,
+          "modeled_start_s": 8.054097749327623
+        },
+        "4": {
+          "receipt": 8.460957332979888,
+          "server_age_s": 1.655,
+          "modeled_start_s": 9.174097749327624
+        },
+        "5": {
+          "receipt": 12.017347624991089,
+          "server_age_s": 2.216,
+          "modeled_start_s": 12.017347624991089
+        },
+        "6": {
+          "receipt": 14.301766290969681,
+          "server_age_s": 2.898,
+          "modeled_start_s": 15.108219124996106
+        },
+        "7": {
+          "receipt": 17.640267040987965,
+          "server_age_s": 2.31,
+          "modeled_start_s": 17.988219124996107
+        },
+        "8": {
+          "receipt": 20.2461924579693,
+          "server_age_s": 2.27,
+          "modeled_start_s": 20.86821912499611
+        },
+        "9": {
+          "receipt": 24.742754000006244,
+          "server_age_s": 2.331,
+          "modeled_start_s": 24.742754000006244
+        },
+        "10": {
+          "receipt": 26.6593482500175,
+          "server_age_s": 0.797,
+          "modeled_start_s": 27.142754000006246
+        }
+      }
+    }
+  ],
+  "candidate": [
+    {
+      "clip": "20180529-0900-PLENARY-23-it_20180529-21:12:43_3",
+      "split": "development",
+      "input_s": 19.2199375,
+      "reference_it": "Sofferenze e disagio delle vittime, che per certi versi ancora alcuni Stati faticano a riconoscere nei propri codici penali, ne abbiamo discusso anche poco fa, per quanto riguarda il tema dello stalking un reato che non è riconosciuto in tutti gli Stati membri all'interno dell'Unione.",
+      "recognized_paired_it": "Senze e disagio delle vittime che, per certi versi, ancora alcuni Stati faticano a riconoscere nei propri codici penali. Ne abbiamo discusso anche poco fa per quanto riguarda il tema dello stalking: un reato che non è riconosciuto in tutti gli Stati membri all'interno dell'Unione.",
+      "translated_en": "Without the suffering and discomfort of the victims who, in some ways, some states still struggle to recognize in their own criminal codes. We also discussed it a little while ago regarding the topic of stalking: a crime that is not recognized in all the member states within the Union.",
+      "reference_token_edit_distance": 1,
+      "reference_words": 47,
+      "translated_phrases": 9,
+      "voiced_phrases": 9,
+      "first_audio_receipt_s": 4.505187750037294,
+      "modeled_completion_after_input_s": 4.0347441663545,
+      "max_modeled_queue_s": 1.7777452083428784,
+      "phrases": {
+        "1": {
+          "receipt": 4.505187750037294,
+          "server_age_s": 2.277,
+          "modeled_start_s": 4.505187750037294
+        },
+        "2": {
+          "receipt": 7.512324583018199,
+          "server_age_s": 4.294,
+          "modeled_start_s": 8.025187750037297
+        },
+        "3": {
+          "receipt": 9.48072333302116,
+          "server_age_s": 3.606,
+          "modeled_start_s": 9.48072333302116
+        },
+        "4": {
+          "receipt": 10.453117583005223,
+          "server_age_s": 2.97,
+          "modeled_start_s": 12.16872333302116
+        },
+        "5": {
+          "receipt": 13.078616333019454,
+          "server_age_s": 3.302,
+          "modeled_start_s": 13.598056666354495
+        },
+        "6": {
+          "receipt": 15.716449083003681,
+          "server_age_s": 2.891,
+          "modeled_start_s": 15.902056666354495
+        },
+        "7": {
+          "receipt": 17.25953683303669,
+          "server_age_s": 2.101,
+          "modeled_start_s": 17.65138999968783
+        },
+        "8": {
+          "receipt": 19.70711995800957,
+          "server_age_s": 2.09,
+          "modeled_start_s": 19.89138999968783
+        },
+        "9": {
+          "receipt": 20.69264187500812,
+          "server_age_s": 0.787,
+          "modeled_start_s": 21.4359316663545
+        }
+      }
+    },
+    {
+      "clip": "20131120-0900-PLENARY-3-it_20131120-09:24:52_5",
+      "split": "development",
+      "input_s": 17.53875,
+      "reference_it": "Desidero sottolineare che, nell'ultima fase, siamo riusciti a imporre al Consiglio di negoziare anche quei temi legati all'accordo sulle Prospettive finanziarie, temi che i capi di Stato e di governo avevano, in maniera arbitraria, inserito nella famosa negotiation box",
+      "recognized_paired_it": "Voglio sottolineare che nell'ultima fase siamo riusciti a imporre al Consiglio di negoziare anche quei temi legati all'accordo sulle prospettive finanziarie, quei temi che i capi di Stato e di governo avevano in maniera arbitraria, inserito nella famosa \"negoziazione box\".",
+      "translated_en": "I want to emphasize that in the final phase we managed to impose on the Council to negotiate those issues as well related to the financial outlook agreement, those issues that the heads of state and government had arbitrarily included in the famous \"negotiazione box.\"",
+      "reference_token_edit_distance": 3,
+      "reference_words": 41,
+      "translated_phrases": 7,
+      "voiced_phrases": 7,
+      "first_audio_receipt_s": 4.735879166051745,
+      "modeled_completion_after_input_s": 4.688183249712612,
+      "max_modeled_queue_s": 1.565110000011515,
+      "phrases": {
+        "1": {
+          "receipt": 4.735879166051745,
+          "server_age_s": 2.287,
+          "modeled_start_s": 4.735879166051745
+        },
+        "2": {
+          "receipt": 6.919207333005033,
+          "server_age_s": 2.173,
+          "modeled_start_s": 7.375879166051748
+        },
+        "3": {
+          "receipt": 9.901511166011915,
+          "server_age_s": 2.303,
+          "modeled_start_s": 9.901511166011915
+        },
+        "4": {
+          "receipt": 12.355619291018229,
+          "server_age_s": 2.217,
+          "modeled_start_s": 12.785241833042821
+        },
+        "5": {
+          "receipt": 14.714975041046273,
+          "server_age_s": 2.116,
+          "modeled_start_s": 15.000825166376156
+        },
+        "6": {
+          "receipt": 17.523388666042592,
+          "server_age_s": 2.887,
+          "modeled_start_s": 17.64490849970949
+        },
+        "7": {
+          "receipt": 19.816266583045945,
+          "server_age_s": 2.054,
+          "modeled_start_s": 19.816266583045945
+        }
+      }
+    },
+    {
+      "clip": "20160622-0900-PLENARY-20-it_20160622-22:00:57_4",
+      "split": "development",
+      "input_s": 15.2,
+      "reference_it": "Ho voluto prendere la parola questa sera perché le istituzioni tutte hanno il dovere di accendere i riflettori su questo fenomeno orribile e vergognoso, perché non sia solo oggetto di studi e approfondimenti, ma soprattutto oggetto di politiche di prevenzione e di contrasto.",
+      "recognized_paired_it": "A questa sera, perché le istituzioni tutte hanno il dovere di accendere i riflettori su questo fenomeno orribile e vergognoso, perché non sia solo oggetto di studi e approfondimenti, ma soprattutto oggetto di politiche di prevenzione e di contrasto.",
+      "translated_en": "Tonight, because all institutions have the duty to shine the spotlight on this horrible, shameful phenomenon, so that it is not only the subject of studies and in-depth examinations, but above all the subject of prevention policies and countermeasures. We must.",
+      "reference_token_edit_distance": 5,
+      "reference_words": 43,
+      "translated_phrases": 5,
+      "voiced_phrases": 5,
+      "first_audio_receipt_s": 6.286694041977171,
+      "modeled_completion_after_input_s": 7.666693332985044,
+      "max_modeled_queue_s": 3.9481977912912463,
+      "phrases": {
+        "1": {
+          "receipt": 6.286694041977171,
+          "server_age_s": 5.244,
+          "modeled_start_s": 6.286694041977171
+        },
+        "2": {
+          "receipt": 9.555389125016518,
+          "server_age_s": 2.161,
+          "modeled_start_s": 9.715069041977173
+        },
+        "3": {
+          "receipt": 14.674693332985044,
+          "server_age_s": 4.222,
+          "modeled_start_s": 14.674693332985044
+        },
+        "4": {
+          "receipt": 17.64850412501255,
+          "server_age_s": 4.834,
+          "modeled_start_s": 18.344026666318378
+        },
+        "5": {
+          "receipt": 18.17182887502713,
+          "server_age_s": 1.937,
+          "modeled_start_s": 22.120026666318378
+        }
+      }
+    },
+    {
+      "clip": "20171003-0900-PLENARY-14-it_20171003-19:06:43_2",
+      "split": "holdout",
+      "input_s": 17.1379375,
+      "reference_it": "L'obiettivo europeo di ridurre del 40 le emissioni entro il 2030 passa attraverso impegni trasversali a tutti i settori dell'economia e a tutti i livelli istituzionali, dagli Stati alle comunità locali.",
+      "recognized_paired_it": "L'obiettivo europeo di ridurre del 40% le emissioni entro il 2030 passa attraverso impegni trasversali a tutti i settori dell'economia, e a tutti i livelli istituzionali, dagli Stati alle comunità locali.",
+      "translated_en": "The European goal of cutting by 40% emissions by 2030 requires cross-cutting commitments across all sectors of the economy, and at all institutional levels, from the states to local communities.",
+      "reference_token_edit_distance": 0,
+      "reference_words": 33,
+      "translated_phrases": 5,
+      "voiced_phrases": 5,
+      "first_audio_receipt_s": 4.9682109170244075,
+      "modeled_completion_after_input_s": 4.683286374987574,
+      "max_modeled_queue_s": 1.892413874953057,
+      "phrases": {
+        "1": {
+          "receipt": 4.9682109170244075,
+          "server_age_s": 2.208,
+          "modeled_start_s": 4.9682109170244075
+        },
+        "2": {
+          "receipt": 7.680815708008595,
+          "server_age_s": 2.26,
+          "modeled_start_s": 8.16821091702441
+        },
+        "3": {
+          "receipt": 12.237343207991216,
+          "server_age_s": 2.202,
+          "modeled_start_s": 12.237343207991216
+        },
+        "4": {
+          "receipt": 16.12522387498757,
+          "server_age_s": 2.087,
+          "modeled_start_s": 16.12522387498757
+        },
+        "5": {
+          "receipt": 19.195960582990665,
+          "server_age_s": 1.888,
+          "modeled_start_s": 19.645223874987572
+        }
+      }
+    },
+    {
+      "clip": "20170517-0900-PLENARY-19-it_20170517-19:55:39_0",
+      "split": "holdout",
+      "input_s": 25.62,
+      "reference_it": "Signor Presidente, onorevoli colleghi, la partita del trasporto, in particolare del trasporto su strada, sarà una delle più interessanti per verificare la capacità di innovazione dell'Unione europea. Abbiamo parlato con dovizia di particolari di tutte le sfide legate ai nuovi carburanti, alla necessità di limitare le emissioni",
+      "recognized_paired_it": "Σας ευχαριστώ. Τον λόγο έχει για 1, 5 λεπτό ο κύριος Σαλίνης. Grazie, Presidente. La partita del trasporto, in particolare del trasporto su strada, sarà una di quelle più interessanti per verificare la capacità di innovazione dell'Unione Europea. Abbiamo parlato con dovizia di particolari di tutte le sfide legate ai nuovi carburanti.",
+      "translated_en": "Thank you. He has the floor for 1.5 minutes Mr. Salinis. Thank you, Mr. President. The transport sector, in particular, road transport, will be one of those most interesting ways to assess the ability of the European Union to innovate. We discussed plenty of details about all the challenges related to new fuels.",
+      "reference_token_edit_distance": 22,
+      "reference_words": 48,
+      "translated_phrases": 10,
+      "voiced_phrases": 10,
+      "first_audio_receipt_s": 3.9128806670196354,
+      "modeled_completion_after_input_s": 6.049748333688051,
+      "max_modeled_queue_s": 2.878245958006012,
+      "phrases": {
+        "1": {
+          "receipt": 3.9128806670196354,
+          "server_age_s": 2.307,
+          "modeled_start_s": 3.9128806670196354
+        },
+        "2": {
+          "receipt": 5.011361625045538,
+          "server_age_s": 2.15,
+          "modeled_start_s": 5.011361625045538
+        },
+        "3": {
+          "receipt": 7.706095792003907,
+          "server_age_s": 3.654,
+          "modeled_start_s": 8.198153291712208
+        },
+        "4": {
+          "receipt": 8.93165800004499,
+          "server_age_s": 2.139,
+          "modeled_start_s": 9.387736625045543
+        },
+        "5": {
+          "receipt": 11.89519495901186,
+          "server_age_s": 2.129,
+          "modeled_start_s": 11.89519495901186
+        },
+        "6": {
+          "receipt": 15.487192959000822,
+          "server_age_s": 4.094,
+          "modeled_start_s": 16.931819959011865
+        },
+        "7": {
+          "receipt": 18.76376916700974,
+          "server_age_s": 3.537,
+          "modeled_start_s": 18.937153292345197
+        },
+        "8": {
+          "receipt": 21.029782959027216,
+          "server_age_s": 3.155,
+          "modeled_start_s": 21.219819959011865
+        },
+        "9": {
+          "receipt": 24.643814167007804,
+          "server_age_s": 2.179,
+          "modeled_start_s": 24.643814167007804
+        },
+        "10": {
+          "receipt": 28.627831667021383,
+          "server_age_s": 0.808,
+          "modeled_start_s": 28.627831667021383
+        }
+      }
+    }
+  ]
+}

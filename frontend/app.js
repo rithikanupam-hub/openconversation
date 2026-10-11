@@ -101,6 +101,8 @@
     el.startStopBtn = document.getElementById("startStopBtn");
     el.startStopIcon = document.getElementById("startStopIcon");
     el.startStopLabel = document.getElementById("startStopLabel");
+    el.warmBtn = document.getElementById("warmBtn");
+    el.warmHint = document.getElementById("warmHint");
     el.flushBtn = document.getElementById("flushBtn");
     el.clearBtn = document.getElementById("clearBtn");
 
@@ -123,6 +125,8 @@
     el.cloneToggle = document.getElementById("cloneToggle");
     el.consentHint = document.getElementById("consentHint");
     el.voiceStatus = document.getElementById("voiceStatus");
+    el.speakerPanel = document.getElementById("speakerPanel");
+    el.usageMeter = document.getElementById("usageMeter");
     el.resetVoiceBtn = document.getElementById("resetVoiceBtn");
 
     el.transcriptFeed = document.getElementById("transcriptFeed");
@@ -165,11 +169,44 @@
    * ------------------------------------------------------------------ */
 
   function wsUrl() {
+    if (window.LINGOSYNC_WS) return window.LINGOSYNC_WS; // cloud: interpreter runs on a separate GPU endpoint
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${location.host}/ws`;
   }
 
+  // Cloud: the server runs on a paid GPU that starts when the page connects. Connect only while the user is
+  // listening, close soon after Stop / in a background tab, and never reconnect in a loop (2026-09-27: open tabs
+  // and reconnect loops kept GPUs running).
+  const CLOUD = !!window.LINGOSYNC_WS;
+  const CLOUD_CLOSE_AFTER_STOP_MS = 15000;           // owner's rule: 15 s unused -> switch off
+  const CLOUD_HIDDEN_STOP_MS = 120000;
+  const CLOUD_MAX_RECONNECTS = 5;
+  App.wantConnection = !CLOUD;
+
+  function cloudConnect() {
+    App.wantConnection = true;
+    clearTimeout(App.cloudCloseTimer);
+    if (!App.ws || App.ws.readyState > WebSocket.OPEN) {
+      App.wsReconnectAttempts = 0;
+      connectWebSocket();
+      showToast("Starting the translator… the first start takes about a minute.");
+    }
+  }
+
+  function cloudRelease(delayMs) {
+    clearTimeout(App.cloudCloseTimer);
+    App.cloudCloseTimer = setTimeout(() => {
+      if (App.isListening) return;
+      App.wantConnection = false;
+      clearTimeout(App.wsReconnectTimer);
+      App.wsReconnectTimer = null;
+      if (App.ws) try { App.ws.close(); } catch (e) { /* already closed */ }
+      setConnState("idle");
+    }, delayMs);
+  }
+
   function connectWebSocket() {
+    if (!App.wantConnection) return;
     setConnState("connecting");
     let socket;
     try {
@@ -189,7 +226,9 @@
     socket.addEventListener("message", onServerMessage);
 
     socket.addEventListener("close", () => {
-      setConnState("closed");
+      if (App.ws !== socket) return;                 // an older socket we already replaced
+      closeUsageSession();
+      setConnState(App.wantConnection ? "closed" : "idle");
       scheduleReconnect();
     });
 
@@ -199,7 +238,14 @@
   }
 
   function scheduleReconnect() {
-    if (App.wsReconnectTimer) return;
+    if (App.wsReconnectTimer || !App.wantConnection) return;
+    if (CLOUD && App.wsReconnectAttempts >= CLOUD_MAX_RECONNECTS) {
+      App.wantConnection = false;
+      if (App.isListening) stopCapture({ notifyServer: false });
+      setConnState("idle");
+      showToast("Connection to the translator was lost. Press Start to try again.");
+      return;
+    }
     setConnState("reconnecting");
     const attempt = App.wsReconnectAttempts++;
     const delay = Math.min(10000, 500 * Math.pow(1.6, attempt)) + Math.random() * 300;
@@ -216,6 +262,7 @@
       connecting: "Connecting…",
       reconnecting: "Reconnecting…",
       closed: "Disconnected",
+      idle: CLOUD ? "Off (press Start)" : "Disconnected",
     };
     el.connStateText.textContent = labels[state] || state;
   }
@@ -239,6 +286,7 @@
       engine: App.settings.engine,
       clone: !!App.settings.clone,
       consent: !!App.settings.consent,
+      client_id: App.clientId,       // anonymous id for the usage record (billing by time)
     };
     wsSend(JSON.stringify(msg));
   }
@@ -275,6 +323,9 @@
       case "voice":
         handleVoice(msg);
         break;
+      case "usage":
+        handleUsage(msg);
+        break;
       case "error":
         showToast(msg.message || "Unknown error");
         break;
@@ -284,6 +335,9 @@
   }
 
   function handleHello(msg) {
+    // Cloud server paces the English itself (phrase by phrase, in small streamed parts): play parts as they
+    // arrive instead of adding the interpreter lag below, which grew to 8 s on streamed parts (2026-09-27).
+    App.serverPacing = !!msg.server_pacing;
     App.engines = new Map((msg.engines || []).map((e) => [e.id, e]));
     App.languages = msg.languages || [];
 
@@ -365,6 +419,17 @@
 
   function handleSegment(msg) {
     const card = getOrCreateCard(msg.id);
+    if (msg.speaker !== undefined && msg.speaker !== null) {
+      const spk = String(msg.speaker);
+      ensureSpeaker(spk);
+      App.segmentSpeaker.set(msg.id, spk);
+      const chip = card.querySelector(".card-speaker");
+      chip.hidden = false;
+      chip.dataset.speaker = spk;
+      chip.textContent = speakerName(spk);
+      chip.style.setProperty("--spk", speakerColor(spk));
+      if (msg.target_text === null || msg.target_text === undefined) markSpeaker(spk, "speaking");
+    }
 
     // Partial updates (e.g. translation arriving before TTS) leave source fields null.
     if (msg.source_lang) card.querySelector(".lang-badge").textContent = languageBadgeText(msg.source_lang);
@@ -423,6 +488,7 @@
     card.dataset.id = String(id);
     card.innerHTML = `
       <div class="card-top-row">
+        <span class="card-speaker" hidden></span>
         <span class="lang-badge">?</span>
         <span class="card-time"></span>
       </div>
@@ -470,7 +536,153 @@
       .catch((err) => console.warn("[LingoSync] audio decode failed", err));
   }
 
+  /* ------------------------------------------------------------------ *
+   *  Speakers: who is talking, their names (editable, remembered here),
+   *  and their own cloned voice. Labels come from the server (Soniox).
+   * ------------------------------------------------------------------ */
+  const SPEAKER_NAMES_KEY = "lingosync.speakerNames";
+  const SPEAKER_COLORS = ["var(--card-cyan)", "var(--card-pink)", "var(--card-green)", "var(--card-violet)",
+                          "var(--card-orange)", "var(--card-blue)"];
+  App.segmentSpeaker = new Map();   // card id -> speaker label
+  App.speakers = new Map();         // speaker label -> { chip, voice }
+  App.speakerNames = (() => {
+    try { return JSON.parse(localStorage.getItem(SPEAKER_NAMES_KEY) || "{}"); } catch (e) { return {}; }
+  })();
+
+  function speakerName(spk) {
+    return App.speakerNames[spk] || `Speaker ${spk}`;
+  }
+
+  function speakerColor(spk) {
+    const n = parseInt(spk, 10);
+    return SPEAKER_COLORS[(Number.isNaN(n) ? 0 : n - 1 + SPEAKER_COLORS.length) % SPEAKER_COLORS.length];
+  }
+
+  function ensureSpeaker(spk) {
+    let s = App.speakers.get(spk);
+    if (s) return s;
+    const chip = document.createElement("div");
+    chip.className = "speaker-chip";
+    chip.dataset.speaker = spk;
+    chip.style.setProperty("--spk", speakerColor(spk));
+    chip.innerHTML = `<span class="speaker-dot"></span><button type="button" class="speaker-name" title="Click to rename"></button><span class="speaker-voice"></span>`;
+    chip.querySelector(".speaker-name").addEventListener("click", () => renameSpeaker(spk));
+    s = { chip, voice: null };
+    App.speakers.set(spk, s);
+    if (el.speakerPanel) {
+      el.speakerPanel.hidden = false;
+      el.speakerPanel.appendChild(chip);
+    }
+    renderSpeaker(spk);
+    return s;
+  }
+
+  function renderSpeaker(spk) {
+    const s = App.speakers.get(spk);
+    if (!s) return;
+    s.chip.querySelector(".speaker-name").textContent = speakerName(spk);
+    const v = s.voice;
+    const voiceEl = s.chip.querySelector(".speaker-voice");
+    if (v && v.state === "locked") voiceEl.textContent = "own voice ✓";
+    else if (v && v.seconds) voiceEl.textContent = `voice ${Math.floor(v.seconds)}/${v.needed}s`;
+    else voiceEl.textContent = "default voice";
+    s.chip.classList.toggle("is-locked", !!(v && v.state === "locked"));
+    document.querySelectorAll(`.card-speaker[data-speaker="${CSS.escape(spk)}"]`).forEach((c) => {
+      c.textContent = speakerName(spk);
+    });
+  }
+
+  function renameSpeaker(spk) {
+    const s = App.speakers.get(spk);
+    if (!s) return;
+    const btn = s.chip.querySelector(".speaker-name");
+    const input = document.createElement("input");
+    input.className = "speaker-name-input";
+    input.value = speakerName(spk);
+    input.maxLength = 30;
+    btn.replaceWith(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = (save) => {
+      if (done) return;
+      done = true;
+      const name = input.value.trim();
+      if (save) {
+        if (name) App.speakerNames[spk] = name; else delete App.speakerNames[spk];
+        try { localStorage.setItem(SPEAKER_NAMES_KEY, JSON.stringify(App.speakerNames)); } catch (e) { /* private mode */ }
+      }
+      input.replaceWith(btn);
+      renderSpeaker(spk);
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") finish(true);
+      if (e.key === "Escape") finish(false);
+    });
+    input.addEventListener("blur", () => finish(true));
+  }
+
+  function markSpeaker(spk, mode) {
+    // mode "speaking": their Italian is coming in; "playing": their English is being played
+    const s = App.speakers.get(spk);
+    if (!s) return;
+    App.speakers.forEach((o) => o.chip.classList.remove(`is-${mode}`));
+    s.chip.classList.add(`is-${mode}`);
+    clearTimeout(s[`${mode}Timer`]);
+    s[`${mode}Timer`] = setTimeout(() => s.chip.classList.remove(`is-${mode}`), 3000);
+  }
+
+  /* Usage meter: time the translator (a paid GPU) has been on, this session and in total on this device. */
+  const USAGE_KEY = "lingosync.usageSeconds";
+  const CLIENT_KEY = "lingosync.clientId";
+  App.clientId = (() => {
+    try {
+      let id = localStorage.getItem(CLIENT_KEY);
+      if (!id) { id = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2); localStorage.setItem(CLIENT_KEY, id); }
+      return id;
+    } catch (e) { return "anonymous"; }
+  })();
+  App.usageSaved = (() => { try { return Number(localStorage.getItem(USAGE_KEY)) || 0; } catch (e) { return 0; } })();
+  App.usageSession = 0;
+
+  function fmtDuration(s) {
+    s = Math.round(s);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}:${String(sec).padStart(2, "0")}`;
+  }
+
+  function handleUsage(msg) {
+    App.usageSession = msg.session_s || 0;
+    App.usageRate = msg.rate_per_hour || 0;
+    renderUsage();
+  }
+
+  function renderUsage() {
+    if (!el.usageMeter) return;
+    const total = App.usageSaved + App.usageSession;
+    const cost = (total / 3600) * (App.usageRate || 0);
+    el.usageMeter.hidden = false;
+    el.usageMeter.textContent = `On ${fmtDuration(App.usageSession)} this session · ${fmtDuration(total)} total · ` +
+      `$${cost.toFixed(2)} at $${(App.usageRate || 0).toFixed(2)}/h`;
+  }
+
+  function closeUsageSession() {
+    if (!App.usageSession) return;
+    App.usageSaved += App.usageSession;
+    App.usageSession = 0;
+    try { localStorage.setItem(USAGE_KEY, String(Math.round(App.usageSaved))); } catch (e) { /* private mode */ }
+    renderUsage();
+  }
+
   function handleVoice(msg) {
+    if (msg.speaker !== undefined && msg.speaker !== null) {
+      // several people: each has their own voice, shown on their chip in the speaker panel
+      const spk = String(msg.speaker);
+      ensureSpeaker(spk).voice = msg;
+      renderSpeaker(spk);
+      if (el.voiceStatus) el.voiceStatus.textContent = "Voices follow each speaker (click a name to rename)";
+      return;
+    }
     if (!el.voiceStatus) return;
     const locked = msg.state === "locked";
     if (locked) {
@@ -547,7 +759,9 @@
     const now = ctx.currentTime;
     const newUtterance = id !== App.lastScheduledId;
     let startAt;
-    if (live && newUtterance && sourceEnd !== null) {
+    if (live && App.serverPacing) {
+      startAt = Math.max(now + 0.05, App.playHead);
+    } else if (live && newUtterance && sourceEnd !== null) {
       // Each stretch starts a fixed lag after the speaker finished it, so the English keeps a
       // steady rhythm behind the speaker instead of stopping and starting with processing time.
       const slot = sourceEnd + App.lag;
@@ -581,7 +795,11 @@
 
     App.playingCount.set(id, (App.playingCount.get(id) || 0) + 1);
     const delayMs = Math.max(0, (startAt - ctx.currentTime) * 1000);
-    setTimeout(() => setCardPlaying(id, true), delayMs);
+    setTimeout(() => {
+      setCardPlaying(id, true);
+      const spk = App.segmentSpeaker.get(id);
+      if (spk !== undefined) markSpeaker(spk, "playing");
+    }, delayMs);
     src.onended = () => {
       const left = (App.playingCount.get(id) || 1) - 1;
       App.playingCount.set(id, left);
@@ -759,6 +977,7 @@
   async function startCapture() {
     if (App.isListening) return;
     ensurePlaybackGraph(); // unlock audio output while we still have the click gesture
+    if (CLOUD) cloudConnect();
 
     const constraints = {
       audio: {
@@ -851,6 +1070,7 @@
   function stopCapture({ notifyServer = true } = {}) {
     if (!App.isListening && !App.mediaStream) return;
     App.isListening = false;
+    if (CLOUD) cloudRelease(CLOUD_CLOSE_AFTER_STOP_MS);
 
     if (notifyServer) wsSend(JSON.stringify({ type: "stop" }));
 
@@ -1013,7 +1233,45 @@
    *  Wire up UI event listeners
    * ------------------------------------------------------------------ */
 
+  /* "Get ready": asks the server to start the GPU early (held at most ~75 s). One request per press, never
+   * retried or sent automatically; the server enforces all limits. */
+  function warmUp() {
+    if (!CLOUD || App.isListening) return;
+    el.warmBtn.disabled = true;
+    fetch(`/warm?client=${encodeURIComponent(App.clientId)}`, { method: "POST" })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.state === "warming" || res.state === "already") {
+          el.warmBtn.dataset.state = "warming";
+          let left = res.seconds || 75;
+          el.warmHint.textContent = "Warming up the translator. Press Start when people begin talking.";
+          clearInterval(App.warmTimer);
+          App.warmTimer = setInterval(() => {
+            left -= 1;
+            if (left <= 0 || App.isListening) {
+              clearInterval(App.warmTimer);
+              el.warmBtn.dataset.state = "";
+              el.warmBtn.disabled = false;
+              el.warmHint.textContent = App.isListening ? "" : "Warm-up ended. Start may take about 30 s.";
+            }
+          }, 1000);
+        } else {
+          el.warmBtn.disabled = false;
+          el.warmHint.textContent = res.state === "limited" ? `Warm-up not available: ${res.detail}.`
+            : "Warm-up is switched off.";
+        }
+      })
+      .catch(() => {
+        el.warmBtn.disabled = false;
+        el.warmHint.textContent = "Could not reach the server.";
+      });
+  }
+
   function bindEvents() {
+    if (CLOUD) {
+      el.warmBtn.hidden = false;
+      el.warmBtn.addEventListener("click", warmUp);
+    }
     el.startStopBtn.addEventListener("click", () => {
       if (App.isListening) {
         stopCapture();
@@ -1164,7 +1422,20 @@
     el.pipelineStatus.dataset.state = "idle";
     el.pipelineStatusText.textContent = STATUS_LABELS.idle;
     refreshDeviceList();
-    connectWebSocket();
+    if (CLOUD) {
+      setConnState("idle");                           // no GPU until the user presses Start
+      document.addEventListener("visibilitychange", () => {
+        clearTimeout(App.hiddenTimer);
+        if (document.hidden) {
+          App.hiddenTimer = setTimeout(() => {
+            if (App.isListening) stopCapture();
+            cloudRelease(0);
+          }, CLOUD_HIDDEN_STOP_MS);
+        }
+      });
+    } else {
+      connectWebSocket();
+    }
   }
 
   if (document.readyState === "loading") {

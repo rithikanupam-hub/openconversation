@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>lingosync</title>
+<title>vocalgrid</title>
 <meta name="description" content="Hear every colleague in your language, in their voice." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <!-- fonts load without blocking: the app must start even when Google is slow or offline -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="/static/style.css?v=10" />
+<link rel="stylesheet" href="/static/style.css?v=16" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
 
   <div class="page">
     <header class="page-header">
-      <span class="page-title">lingosync</span>
+      <span class="page-title">vocalgrid</span>
       <span class="page-subtitle">real-time voice translator</span>
     </header>
 
@@ -63,6 +63,8 @@
               </div>
 
               <p id="voiceStatus" class="voice-status" aria-live="polite">voice: not captured yet</p>
+              <div id="speakerPanel" class="speaker-panel" aria-label="Speakers" hidden></div>
+              <p id="usageMeter" class="usage-meter" aria-live="off" hidden></p>
             </div>
 
             <div class="transcript-section" aria-label="Transcript">
@@ -158,6 +160,8 @@
               </span>
             </button>
             <span id="startStopLabel" class="ptt-label">start listening</span>
+            <button id="warmBtn" type="button" class="drawer-toggle warm-btn" hidden>get ready</button>
+            <span id="warmHint" class="warm-hint" aria-live="polite"></span>
           </div>
 
           <button type="button" class="drawer-toggle" id="drawerToggle" aria-expanded="false" aria-controls="settingsDrawer">
@@ -225,7 +229,7 @@
     </aside>
 
     <footer class="app-footer">
-      <span>lingosync — on-device style real-time translation for in-person meetings.</span>
+      <span>vocalgrid — on-device style real-time translation for in-person meetings.</span>
     </footer>
   </div>
 
@@ -233,7 +237,8 @@
 
   <audio id="playbackAudio" preload="auto" style="display:none"></audio>
 
-  <script src="/static/app.js?v=10"></script>
-  <script src="/static/ui.js?v=10"></script>
+  <script src="/config.js"></script>
+  <script src="/static/app.js?v=16"></script>
+  <script src="/static/ui.js?v=15"></script>
 </body>
 </html>
