@@ -6,3 +6,13 @@ tests/*.aiff
 certs/
 data/
 frontend/_e2e_clip.wav
+
+# Keep local credentials and replay evidence out of source publications.
+.env.*
+!.env.example
+recordings/
+tests/stack_compare/out/
+research/**/baseline/
+research/**/candidate/
+research/**/server-baseline/
+research/**/server-candidate/

@@ -1,0 +1,14 @@
+{
+  "cap_usd": 2,
+  "baseline_window_seconds": 200.08500719070435,
+  "candidate_deploy_to_stop_seconds": 282.0,
+  "allocated_compute_estimate_usd": 0.14940778542854308,
+  "soniox_allowance_usd": 0.1,
+  "build_snapshot_storage_network_allowance_usd": 0.5,
+  "conservative_total_usd": 0.749407785428543,
+  "invoice_verified": false,
+  "containers": [],
+  "dev_stopped": true,
+  "price_basis": "Conservative estimate: L4 $0.000222/s + 4 CPU cores at $0.0000131/core/s + 16 GiB at $0.00000222/GiB/s across the recorded windows; allowances separate.",
+  "note": "Conservative continuously allocated L4/4-core/16GiB estimate across windows plus allowances; not provider invoice."
+}

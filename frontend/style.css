@@ -887,6 +887,17 @@ main {
   margin-top: 2px;
 }
 
+.warm-hint {
+  font-size: 12px;
+  min-height: 16px;
+  opacity: 0.75;
+  text-align: center;
+}
+
+.warm-btn[data-state="warming"] {
+  border-color: var(--color-busy);
+}
+
 .ptt-button {
   position: relative;
   width: 92px;
@@ -1272,4 +1283,92 @@ input[type="range"] {
   .switch-panel { grid-area: switches; }
   .consent-hint { grid-area: hint; }
   .drawer-toggle { grid-area: settings; }
+}
+
+
+/* ---------------------------- Speakers (who is talking, their voice) ---------------------------- */
+.speaker-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.speaker-chip {
+  --spk: var(--card-cyan);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--screen-line);
+  background: var(--screen-bg-2);
+  color: var(--screen-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.speaker-chip.is-speaking,
+.speaker-chip.is-playing {
+  border-color: var(--spk);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--spk) 35%, transparent);
+}
+
+.speaker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--spk);
+  opacity: 0.5;
+}
+
+.speaker-chip.is-speaking .speaker-dot,
+.speaker-chip.is-playing .speaker-dot {
+  opacity: 1;
+}
+
+.speaker-name,
+.speaker-name-input {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.speaker-name-input {
+  width: 12ch;
+  border-bottom: 1px solid var(--spk);
+  text-decoration: none;
+  outline: none;
+  cursor: text;
+}
+
+.speaker-voice {
+  color: var(--screen-text-dim);
+}
+
+.speaker-chip.is-locked .speaker-voice {
+  color: var(--card-green);
+}
+
+.card-speaker {
+  --spk: var(--card-cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--spk);
+}
+
+.usage-meter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--screen-text-dim);
+  text-align: center;
+  margin-top: 6px;
 }

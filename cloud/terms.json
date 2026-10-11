@@ -1,0 +1,10 @@
+{
+  "_note": "Public example only; configure your own meeting terminology before evaluation. Private test vocabulary is not published.",
+  "general": [
+    {
+      "key": "domain",
+      "value": "Business meeting"
+    }
+  ],
+  "terms": []
+}
